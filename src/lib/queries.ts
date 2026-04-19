@@ -401,11 +401,23 @@ export async function getUserTeam(userId: string): Promise<UserTeam | null> {
 
 export async function getTeamByInviteCode(inviteCode: string) {
   const admin = createAdminClient();
-  const { data: team } = await admin
+
+  // Fetch all teams and filter in JS — avoids any column/RLS mismatch issue
+  const { data: teams, error } = await admin
     .from("teams")
-    .select("id, name, description, logo_url")
-    .eq("invite_code", inviteCode)
-    .maybeSingle();
+    .select("id, name, description, logo_url, invite_code");
+
+  if (error) {
+    console.error("[getTeamByInviteCode] query error:", error.message, error.details);
+    return null;
+  }
+
+  console.log("[getTeamByInviteCode] looking for:", JSON.stringify(inviteCode), "| all codes:", teams?.map(t => t.invite_code));
+
+  const team = (teams ?? []).find(
+    t => t.invite_code.trim() === inviteCode.trim()
+  );
+
   if (!team) return null;
 
   const { count } = await admin
@@ -413,7 +425,13 @@ export async function getTeamByInviteCode(inviteCode: string) {
     .select("*", { count: "exact", head: true })
     .eq("team_id", team.id);
 
-  return { ...(team as { id: string; name: string; description: string | null; logo_url: string | null }), memberCount: count ?? 0 };
+  return {
+    id:          team.id          as string,
+    name:        team.name        as string,
+    description: team.description as string | null,
+    logo_url:    team.logo_url    as string | null,
+    memberCount: count ?? 0,
+  };
 }
 
 export type TeamMemberStat = {
