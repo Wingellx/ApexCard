@@ -21,6 +21,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   ]);
 
   if (profile && !profile.onboarding_completed) redirect("/onboarding");
+  if (profile?.account_type === "owner") redirect("/dashboard/owner");
 
   const streak      = calculateStreak(allDates);
   const rawName     = profile?.full_name?.trim() || profile?.email?.split("@")[0] || user?.email?.split("@")[0] || "User";

@@ -18,6 +18,8 @@ interface Profile {
   role: string;
   bio: string;
   leaderboard_opt_in: boolean;
+  discoverable: boolean;
+  contact_enabled: boolean;
 }
 
 interface Props {

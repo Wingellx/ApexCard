@@ -3,7 +3,7 @@
 import { useActionState, useState, useEffect } from "react";
 import { saveProfile } from "@/app/dashboard/profile/actions";
 import Button from "@/components/ui/Button";
-import { CheckCircle2, XCircle, Link2, Copy, Check, Trophy } from "lucide-react";
+import { CheckCircle2, XCircle, Link2, Copy, Check, Trophy, Search, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Profile {
@@ -13,6 +13,8 @@ interface Profile {
   role: string;
   bio: string;
   leaderboard_opt_in: boolean;
+  discoverable:       boolean;
+  contact_enabled:    boolean;
 }
 
 interface Props {
@@ -43,7 +45,9 @@ export default function ProfileForm({ profile, appUrl, onSaved }: Props) {
   const [username,      setUsername]      = useState(profile?.username       ?? "");
   const [role,          setRole]          = useState(profile?.role           ?? "closer");
   const [bio,           setBio]           = useState(profile?.bio            ?? "");
-  const [leaderboardOptIn, setLeaderboardOptIn] = useState(profile?.leaderboard_opt_in ?? false);
+  const [leaderboardOptIn,  setLeaderboardOptIn]  = useState(profile?.leaderboard_opt_in ?? false);
+  const [discoverable,      setDiscoverable]      = useState(profile?.discoverable      ?? false);
+  const [contactEnabled,    setContactEnabled]    = useState(profile?.contact_enabled   ?? false);
   const [copied,        setCopied]        = useState(false);
 
   const trimmed     = username.trim().toLowerCase();
@@ -223,6 +227,78 @@ export default function ProfileForm({ profile, appUrl, onSaved }: Props) {
             )} />
           </button>
           <input type="hidden" name="leaderboard_opt_in" value={leaderboardOptIn ? "on" : "off"} />
+        </div>
+      </div>
+
+      {/* Discoverable by offer owners */}
+      <div
+        className="animate-in bg-[#111318] border border-[#1e2130] rounded-xl p-6"
+        style={{ animationDelay: "360ms" }}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 bg-indigo-500/10 border border-indigo-500/20 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+              <Search className="w-4 h-4 text-indigo-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[#f0f2f8]">Discoverable by offer owners</p>
+              <p className="text-xs text-[#6b7280] mt-0.5 leading-relaxed">
+                Allow verified offer owners and managers to find your profile in the rep directory.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={discoverable}
+            onClick={() => setDiscoverable(v => !v)}
+            className={cn(
+              "relative shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-[#111318]",
+              discoverable ? "bg-indigo-500" : "bg-[#1e2130]"
+            )}
+          >
+            <span className={cn(
+              "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200",
+              discoverable ? "translate-x-5" : "translate-x-0"
+            )} />
+          </button>
+          <input type="hidden" name="discoverable" value={discoverable ? "on" : "off"} />
+        </div>
+      </div>
+
+      {/* Contact enabled */}
+      <div
+        className="animate-in bg-[#111318] border border-[#1e2130] rounded-xl p-6"
+        style={{ animationDelay: "400ms" }}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 bg-violet-500/10 border border-violet-500/20 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+              <Mail className="w-4 h-4 text-violet-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[#f0f2f8]">Allow contact from offer owners</p>
+              <p className="text-xs text-[#6b7280] mt-0.5 leading-relaxed">
+                Show a contact button on your profile in the rep directory. Only visible to verified owners.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={contactEnabled}
+            onClick={() => setContactEnabled(v => !v)}
+            className={cn(
+              "relative shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-[#111318]",
+              contactEnabled ? "bg-violet-500" : "bg-[#1e2130]"
+            )}
+          >
+            <span className={cn(
+              "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200",
+              contactEnabled ? "translate-x-5" : "translate-x-0"
+            )} />
+          </button>
+          <input type="hidden" name="contact_enabled" value={contactEnabled ? "on" : "off"} />
         </div>
       </div>
 

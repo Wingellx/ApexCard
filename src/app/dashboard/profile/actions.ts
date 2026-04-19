@@ -16,6 +16,8 @@ export async function saveProfile(
   const role            =  formData.get("role")             as string;
   const bio             = (formData.get("bio")              as string).trim().slice(0, 160);
   const leaderboard_opt_in = formData.get("leaderboard_opt_in") === "on";
+  const discoverable       = formData.get("discoverable")       === "on";
+  const contact_enabled    = formData.get("contact_enabled")    === "on";
 
   if (rawUsername && !/^[a-z0-9_-]{3,30}$/.test(rawUsername)) {
     return { error: "Username must be 3–30 characters: lowercase letters, numbers, _ or -" };
@@ -40,6 +42,8 @@ export async function saveProfile(
       role:                 validRoles.includes(role) ? role : "closer",
       bio,
       leaderboard_opt_in,
+      discoverable,
+      contact_enabled,
     })
     .eq("id", user.id);
 

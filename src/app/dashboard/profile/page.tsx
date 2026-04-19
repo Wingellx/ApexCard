@@ -6,7 +6,12 @@ import ProfilePanel from "@/components/dashboard/ProfilePanel";
 export default async function ProfilePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const profile = user ? await getProfileFull(user.id) : null;
+  const raw     = user ? await getProfileFull(user.id) : null;
+  const profile = raw ? {
+    ...raw,
+    discoverable:    raw.discoverable    ?? false,
+    contact_enabled: raw.contact_enabled ?? false,
+  } : null;
 
   return (
     <div className="px-4 sm:px-8 py-6 sm:py-8 max-w-[800px]">

@@ -225,7 +225,7 @@ export async function getProfileFull(userId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("full_name, email, username, role, bio, leaderboard_opt_in, onboarding_completed")
+    .select("full_name, email, username, role, bio, leaderboard_opt_in, onboarding_completed, account_type, verified_owner, discoverable, contact_enabled")
     .eq("id", userId)
     .maybeSingle();
   if (error) console.error("[getProfileFull] Supabase error:", error.message, error.details, error.hint);
@@ -482,4 +482,108 @@ export async function getTeamLeaderboard(
       };
     })
     .sort((a, b) => b.totalCash - a.totalCash);
+}
+
+// ── Owner portal ─────────────────────────────────────────────
+
+export type DiscoverableRep = {
+  id:             string;
+  name:           string;
+  username:       string | null;
+  role:           string | null;
+  isVerified:     boolean;
+  bio:            string | null;
+  contactEnabled: boolean;
+  totalCash:      number;
+  closeRate:      number;
+  daysLogged:     number;
+};
+
+export async function getDiscoverableReps(search?: string): Promise<DiscoverableRep[]> {
+  const admin = createAdminClient();
+
+  let q = admin
+    .from("profiles")
+    .select("id, full_name, email, username, role, is_verified, bio, contact_enabled")
+    .eq("account_type", "rep")
+    .eq("discoverable", true);
+
+  if (search?.trim()) {
+    const s = search.trim().replace(/[%_]/g, "\\$&");
+    q = q.or(`full_name.ilike.%${s}%,username.ilike.%${s}%`);
+  }
+
+  const { data: reps } = await q.order("full_name");
+  if (!reps?.length) return [];
+
+  const repIds = reps.map((r) => r.id as string);
+  const { data: logs } = await admin
+    .from("call_logs")
+    .select("user_id, shows, offers_taken, cash_collected")
+    .in("user_id", repIds);
+
+  const byUser = new Map<string, { shows: number; offersTaken: number; cash: number; days: number }>();
+  for (const rid of repIds) byUser.set(rid, { shows: 0, offersTaken: 0, cash: 0, days: 0 });
+  for (const log of logs ?? []) {
+    const agg = byUser.get(log.user_id as string);
+    if (!agg) continue;
+    agg.shows       += log.shows        ?? 0;
+    agg.offersTaken += log.offers_taken ?? 0;
+    agg.cash        += Number(log.cash_collected ?? 0);
+    agg.days        += 1;
+  }
+
+  return reps.map((r) => {
+    const agg = byUser.get(r.id as string)!;
+    return {
+      id:             r.id as string,
+      name:           (r.full_name as string)?.trim() || (r.email as string)?.split("@")[0] || "Rep",
+      username:       r.username as string | null,
+      role:           r.role as string | null,
+      isVerified:     (r.is_verified as boolean) ?? false,
+      bio:            (r.bio as string) || null,
+      contactEnabled: (r.contact_enabled as boolean) ?? false,
+      totalCash:      agg.cash,
+      closeRate:      agg.shows > 0 ? (agg.offersTaken / agg.shows) * 100 : 0,
+      daysLogged:     agg.days,
+    };
+  });
+}
+
+export async function getOwnerShortlist(ownerId: string): Promise<Set<string>> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("owner_shortlists")
+    .select("rep_id")
+    .eq("owner_id", ownerId);
+  return new Set((data ?? []).map((r) => r.rep_id as string));
+}
+
+export async function getOwnerVerificationRequest(userId: string) {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("owner_verification_requests")
+    .select("id, full_name, company_name, company_website, offer_description, status, admin_notes, created_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return data;
+}
+
+export async function getPendingOwnerRequests() {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("owner_verification_requests")
+    .select("id, user_id, full_name, company_name, company_website, offer_description, status, created_at, profiles(email)")
+    .order("created_at", { ascending: true });
+  return (data ?? []) as Array<{
+    id: string;
+    user_id: string;
+    full_name: string;
+    company_name: string;
+    company_website: string;
+    offer_description: string;
+    status: string;
+    created_at: string;
+    profiles: { email: string } | null;
+  }>;
 }
