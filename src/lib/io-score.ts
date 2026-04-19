@@ -1,4 +1,4 @@
-export const IO_TEAM_ID = "00000000-0000-0000-0000-000000000010";
+export const IO_TEAM_ID = "fa2d6f19-85f3-44f3-ae05-0e44aedfb64e";
 export const IO_INVITE_CODE = "IO-2026";
 
 // Baseline work units for full work score (25 pts)
