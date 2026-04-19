@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { ShieldCheck, Crown, ChevronLeft, Flame, Star } from "lucide-react";
 
