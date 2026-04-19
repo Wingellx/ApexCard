@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, PhoneCall, Target, History, Award,
-  Settings, LogOut, Menu, X, Trophy, User, Flame,
+  Settings, LogOut, Menu, X, Trophy, User, Flame, Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signout } from "@/app/auth/actions";
@@ -16,34 +16,39 @@ interface SidebarProps {
   userRole: string;
   userInitial: string;
   streak: number;
+  teamId?: string | null;
 }
 
-const sections = [
-  {
-    label: "Performance",
-    items: [
-      { href: "/dashboard",         label: "Overview",    icon: LayoutDashboard },
-      { href: "/dashboard/log",     label: "Log Calls",   icon: PhoneCall       },
-      { href: "/dashboard/history", label: "History",     icon: History         },
-      { href: "/dashboard/goals",   label: "Goals",       icon: Target          },
-      { href: "/dashboard/stats",   label: "My Stats",    icon: Award           },
-    ],
-  },
-  {
-    label: "Discover",
-    items: [
-      { href: "/leaderboard",       label: "Leaderboard", icon: Trophy          },
-    ],
-  },
-  {
-    label: "Account",
-    items: [
-      { href: "/dashboard/profile", label: "Profile",     icon: User            },
-    ],
-  },
-];
+function buildSections(teamId?: string | null) {
+  return [
+    {
+      label: "Performance",
+      items: [
+        { href: "/dashboard",         label: "Overview",    icon: LayoutDashboard },
+        { href: "/dashboard/log",     label: "Log Calls",   icon: PhoneCall       },
+        { href: "/dashboard/history", label: "History",     icon: History         },
+        { href: "/dashboard/goals",   label: "Goals",       icon: Target          },
+        { href: "/dashboard/stats",   label: "My Stats",    icon: Award           },
+      ],
+    },
+    {
+      label: "Discover",
+      items: [
+        { href: "/leaderboard",       label: "Leaderboard", icon: Trophy          },
+        ...(teamId ? [{ href: "/dashboard/team", label: "Team", icon: Users }] : []),
+      ],
+    },
+    {
+      label: "Account",
+      items: [
+        { href: "/dashboard/profile", label: "Profile",     icon: User            },
+      ],
+    },
+  ];
+}
 
-export default function Sidebar({ userName, userEmail, userRole, userInitial, streak }: SidebarProps) {
+export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId }: SidebarProps) {
+  const sections = buildSections(teamId);
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 

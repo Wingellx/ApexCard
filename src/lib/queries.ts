@@ -10,6 +10,10 @@ function monthBounds() {
   return { first, last, monthDate: first };
 }
 
+export function thisMonthBounds() {
+  return monthBounds();
+}
+
 function nDaysAgo(n: number) {
   const d = new Date();
   d.setDate(d.getDate() - n);
@@ -366,4 +370,116 @@ export async function getPublicLifetimeStats(userId: string) {
   const streak            = calculateStreak(sortedDates);
 
   return { totals, showRate, closeRate, cashPerClose, bestDay, daysLogged, name, isVerified, verifiedByName, verifiedByCompany, username, role, streak };
+}
+
+// ── Teams ────────────────────────────────────────────────────
+
+export type UserTeam = {
+  teamId: string;
+  team: {
+    id: string;
+    name: string;
+    description: string | null;
+    logo_url: string | null;
+    invite_code: string;
+  };
+};
+
+export async function getUserTeam(userId: string): Promise<UserTeam | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("team_members")
+    .select("team_id, teams(id, name, description, logo_url, invite_code)")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    teamId: data.team_id as string,
+    team: data.teams as UserTeam["team"],
+  };
+}
+
+export async function getTeamByInviteCode(inviteCode: string) {
+  const admin = createAdminClient();
+  const { data: team } = await admin
+    .from("teams")
+    .select("id, name, description, logo_url")
+    .eq("invite_code", inviteCode)
+    .maybeSingle();
+  if (!team) return null;
+
+  const { count } = await admin
+    .from("team_members")
+    .select("*", { count: "exact", head: true })
+    .eq("team_id", team.id);
+
+  return { ...(team as { id: string; name: string; description: string | null; logo_url: string | null }), memberCount: count ?? 0 };
+}
+
+export type TeamMemberStat = {
+  userId:           string;
+  name:             string;
+  username:         string | null;
+  role:             string | null;
+  isVerified:       boolean;
+  totalCash:        number;
+  totalCalls:       number;
+  totalOffersTaken: number;
+  closeRate:        number;
+};
+
+export async function getTeamLeaderboard(
+  teamId: string,
+  startDate?: string,
+  endDate?: string
+): Promise<TeamMemberStat[]> {
+  const admin = createAdminClient();
+
+  const { data: members } = await admin
+    .from("team_members")
+    .select("user_id, profiles(full_name, email, username, role, is_verified)")
+    .eq("team_id", teamId);
+
+  if (!members?.length) return [];
+
+  const userIds = members.map((m) => m.user_id as string);
+
+  let query = admin
+    .from("call_logs")
+    .select("user_id, calls_taken, shows, offers_taken, cash_collected")
+    .in("user_id", userIds);
+  if (startDate) query = query.gte("date", startDate);
+  if (endDate)   query = query.lte("date", endDate);
+
+  const { data: logs } = await query;
+
+  const byUser = new Map<string, { calls: number; shows: number; offersTaken: number; cash: number }>();
+  for (const uid of userIds) byUser.set(uid, { calls: 0, shows: 0, offersTaken: 0, cash: 0 });
+  for (const log of logs ?? []) {
+    const agg = byUser.get(log.user_id as string);
+    if (!agg) continue;
+    agg.calls       += log.calls_taken  ?? 0;
+    agg.shows       += log.shows        ?? 0;
+    agg.offersTaken += log.offers_taken ?? 0;
+    agg.cash        += Number(log.cash_collected ?? 0);
+  }
+
+  return members
+    .map((m) => {
+      type P = { full_name?: string | null; email?: string | null; username?: string | null; role?: string | null; is_verified?: boolean | null };
+      const p = m.profiles as P | null;
+      const agg = byUser.get(m.user_id as string)!;
+      return {
+        userId:           m.user_id as string,
+        name:             p?.full_name?.trim() || p?.email?.split("@")[0] || "Member",
+        username:         p?.username ?? null,
+        role:             p?.role ?? null,
+        isVerified:       p?.is_verified ?? false,
+        totalCash:        agg.cash,
+        totalCalls:       agg.calls,
+        totalOffersTaken: agg.offersTaken,
+        closeRate:        agg.shows > 0 ? (agg.offersTaken / agg.shows) * 100 : 0,
+      };
+    })
+    .sort((a, b) => b.totalCash - a.totalCash);
 }
