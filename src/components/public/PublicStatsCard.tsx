@@ -135,7 +135,7 @@ export default function PublicStatsCard({
             )}
             <h1
               className="font-black text-white tracking-tight leading-[1.0]"
-              style={{ fontSize: "clamp(2rem, 8vw, 2.8rem)" }}
+              style={{ fontSize: "clamp(2rem, 8vw, 2.8rem)", fontFamily: "var(--font-sora), system-ui, sans-serif" }}
             >
               {name}
             </h1>
@@ -163,6 +163,7 @@ export default function PublicStatsCard({
                 fontSize: "clamp(2.8rem, 12vw, 4.2rem)",
                 color: "#10b981",
                 textShadow: "0 0 40px rgba(16,185,129,0.25)",
+                fontFamily: "var(--font-sora), system-ui, sans-serif",
               }}
             >
               {fmt(totals.cash)}
