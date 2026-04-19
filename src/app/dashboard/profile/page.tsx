@@ -1,7 +1,7 @@
 import { User } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileFull } from "@/lib/queries";
-import ProfileForm from "@/components/dashboard/ProfileForm";
+import ProfilePanel from "@/components/dashboard/ProfilePanel";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -16,10 +16,14 @@ export default async function ProfilePage() {
         </div>
         <div>
           <h1 className="text-2xl font-extrabold text-[#f0f2f8] tracking-tight">Profile</h1>
-          <p className="text-sm text-[#6b7280] mt-0.5">Set up your public ApexCard identity.</p>
+          <p className="text-sm text-[#6b7280] mt-0.5">
+            {profile?.full_name?.trim() || profile?.username
+              ? "Your public ApexCard identity."
+              : "Set up your public ApexCard identity."}
+          </p>
         </div>
       </div>
-      <ProfileForm
+      <ProfilePanel
         profile={profile}
         appUrl={process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}
       />

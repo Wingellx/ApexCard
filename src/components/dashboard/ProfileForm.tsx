@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useEffect } from "react";
 import { saveProfile } from "@/app/dashboard/profile/actions";
 import Button from "@/components/ui/Button";
 import { CheckCircle2, XCircle, Link2, Copy, Check, Trophy } from "lucide-react";
@@ -18,6 +18,7 @@ interface Profile {
 interface Props {
   profile: Profile | null;
   appUrl: string;
+  onSaved?: () => void;
 }
 
 const ROLES = [
@@ -31,8 +32,12 @@ function isValidUsername(s: string) {
   return /^[a-z0-9_-]{3,30}$/.test(s);
 }
 
-export default function ProfileForm({ profile, appUrl }: Props) {
+export default function ProfileForm({ profile, appUrl, onSaved }: Props) {
   const [state, formAction, isPending] = useActionState(saveProfile, null);
+
+  useEffect(() => {
+    if (state?.success) onSaved?.();
+  }, [state?.success]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [fullName,      setFullName]      = useState(profile?.full_name      ?? "");
   const [username,      setUsername]      = useState(profile?.username       ?? "");
