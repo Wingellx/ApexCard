@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileFull, getLoggedDates, calculateStreak } from "@/lib/queries";
 import Sidebar from "@/components/dashboard/Sidebar";
@@ -17,6 +18,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
     user ? getProfileFull(user.id) : Promise.resolve(null),
     user ? getLoggedDates(user.id) : Promise.resolve([] as string[]),
   ]);
+
+  if (profile && !profile.onboarding_completed) redirect("/onboarding");
 
   const streak      = calculateStreak(allDates);
   const rawName     = profile?.full_name?.trim() || profile?.email?.split("@")[0] || user?.email?.split("@")[0] || "User";
