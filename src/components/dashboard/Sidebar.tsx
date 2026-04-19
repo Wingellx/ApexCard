@@ -36,7 +36,7 @@ function buildSections(teamId?: string | null, isIOmember?: boolean) {
       label: "Discover",
       items: [
         { href: "/leaderboard",       label: "Leaderboard", icon: Trophy          },
-        ...(teamId ? [{ href: "/dashboard/team", label: "Team", icon: Users }] : []),
+        ...(teamId ? [{ href: "/dashboard/team", label: isIOmember ? "Brotherhood ⚔️" : "Team", icon: Users }] : []),
       ],
     },
     ...(isIOmember ? [{
