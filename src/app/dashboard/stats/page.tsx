@@ -1,9 +1,13 @@
-import { Award, ExternalLink, ShieldCheck, Download, Trophy } from "lucide-react";
+import { Award, ExternalLink, ShieldCheck, Trophy, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAllCallLogs, getProfileFull, computeBestPeriods, weekRangeLabel, monthKeyLabel } from "@/lib/queries";
+import {
+  getAllCallLogs, getProfileFull, computeBestPeriods, weekRangeLabel, monthKeyLabel,
+  getDateRangeLogs, thisWeekBounds, lastWeekBounds,
+} from "@/lib/queries";
 import CopyLinkButton from "@/components/dashboard/CopyLinkButton";
 import VerificationForm from "@/components/dashboard/VerificationForm";
+import DownloadCardButton from "@/components/dashboard/DownloadCardButton";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -30,10 +34,18 @@ export default async function StatsPage() {
   let logs: Awaited<ReturnType<typeof getAllCallLogs>> = [];
   let profile: Awaited<ReturnType<typeof getProfileFull>> = null;
 
+  const tw = thisWeekBounds();
+  const lw = lastWeekBounds();
+  type RawLog = { date: string; calls_taken?: number | null; shows?: number | null; offers_taken?: number | null; cash_collected?: number | string | null; commission_earned?: number | string | null };
+  let thisWeekLogs: RawLog[] = [];
+  let lastWeekLogs: RawLog[] = [];
+
   if (user) {
-    const [logsResult, profileResult] = await Promise.allSettled([
+    const [logsResult, profileResult, twResult, lwResult] = await Promise.allSettled([
       getAllCallLogs(user.id),
       getProfileFull(user.id),
+      getDateRangeLogs(user.id, tw.start, tw.end),
+      getDateRangeLogs(user.id, lw.start, lw.end),
     ]);
     if (logsResult.status === "fulfilled") {
       logs = logsResult.value;
@@ -45,6 +57,8 @@ export default async function StatsPage() {
     } else {
       console.error("[stats] getProfileFull error:", profileResult.reason);
     }
+    if (twResult.status === "fulfilled") thisWeekLogs = twResult.value as RawLog[];
+    if (lwResult.status === "fulfilled") lastWeekLogs = lwResult.value as RawLog[];
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -84,6 +98,24 @@ export default async function StatsPage() {
 
   const { bestWeek, bestMonth } = computeBestPeriods(logs);
 
+  // Week-over-week helpers
+  function aggWeek(rows: RawLog[]) {
+    return rows.reduce(
+      (a, r) => ({
+        calls:       a.calls       + (r.calls_taken  ?? 0),
+        offersTaken: a.offersTaken + (r.offers_taken ?? 0),
+        shows:       a.shows       + (r.shows        ?? 0),
+        cash:        a.cash        + Number(r.cash_collected    ?? 0),
+        commission:  a.commission  + Number(r.commission_earned ?? 0),
+      }),
+      { calls: 0, offersTaken: 0, shows: 0, cash: 0, commission: 0 }
+    );
+  }
+  const twAgg = aggWeek(thisWeekLogs);
+  const lwAgg = aggWeek(lastWeekLogs);
+  const twCR  = twAgg.shows > 0 ? (twAgg.offersTaken / twAgg.shows) * 100 : 0;
+  const lwCR  = lwAgg.shows > 0 ? (lwAgg.offersTaken / lwAgg.shows) * 100 : 0;
+
   const totals = logs.reduce(
     (a, r) => ({
       calls:       a.calls       + (r.calls_taken       ?? 0),
@@ -122,13 +154,25 @@ export default async function StatsPage() {
             <p className="text-sm text-[#6b7280] mt-0.5">Your all-time performance across {daysLogged} logged days.</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <a
-            href="/api/export/stats"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#6b7280] hover:text-[#f0f2f8] border border-[#1e2130] hover:border-[#2a2f45] px-3 py-2 rounded-lg transition-colors"
-          >
-            <Download className="w-3.5 h-3.5" /> Export Stats
-          </a>
+        <div className="flex items-center gap-2 flex-wrap">
+          <DownloadCardButton stats={{
+            name:           profile?.full_name ?? user?.email?.split("@")[0] ?? "Apex Rep",
+            role:           profile?.role ?? null,
+            isVerified:     verificationStatus === "verified",
+            verifiedByName: verifyReq?.manager_name ?? null,
+            verifiedByCompany: verifyReq?.manager_company ?? null,
+            cash:        totals.cash,
+            commission:  totals.commission,
+            calls:       totals.calls,
+            offersMade:  totals.offersMade,
+            offersTaken: totals.offersTaken,
+            shows:       totals.shows,
+            showRate,
+            closeRate,
+            cashPerClose,
+            bestDay,
+            daysLogged,
+          }} />
           <a
             href={publicUrl} target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-xs text-[#6b7280] hover:text-[#f0f2f8] border border-[#1e2130] hover:border-[#2a2f45] px-3 py-2 rounded-lg transition-colors"
@@ -176,6 +220,45 @@ export default async function StatsPage() {
           </div>
         </div>
       </div>
+
+      {/* This Week vs Last Week */}
+      {(twAgg.calls > 0 || lwAgg.calls > 0) && (
+        <div className="bg-[#111318] border border-[#1e2130] rounded-xl overflow-hidden mb-4">
+          <div className="h-[2px] bg-violet-500 shadow-[0_2px_14px_2px_rgba(139,92,246,0.28)]" />
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest">This Week vs Last Week</p>
+              <span className="text-[11px] text-[#4b5563]">vs {weekRangeLabel(lw.start)}</span>
+            </div>
+            <p className="text-xs text-[#4b5563] mb-4">{weekRangeLabel(tw.start)}</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { label: "Calls",      tw: twAgg.calls,       lw: lwAgg.calls,       fmt: (n: number) => n.toLocaleString(), type: "number" as const },
+                { label: "Cash",       tw: twAgg.cash,        lw: lwAgg.cash,        fmt: (n: number) => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n), type: "currency" as const },
+                { label: "Close Rate", tw: twCR,              lw: lwCR,              fmt: (n: number) => `${n.toFixed(1)}%`, type: "percent" as const },
+                { label: "Commission", tw: twAgg.commission,  lw: lwAgg.commission,  fmt: (n: number) => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n), type: "currency" as const },
+              ].map(({ label, tw: cur, lw: prev, fmt: fmtFn }) => {
+                const diff = cur - prev;
+                const up   = diff > 0;
+                const flat = Math.abs(diff) < 0.01;
+                return (
+                  <div key={label} className="bg-[#0d0f15] border border-[#1e2130] rounded-xl p-4">
+                    <p className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-wider mb-2">{label}</p>
+                    <p className="text-xl font-extrabold tabular-nums text-[#f0f2f8] mb-1">{fmtFn(cur)}</p>
+                    {flat
+                      ? <span className="inline-flex items-center gap-1 text-xs text-[#6b7280]"><Minus className="w-3 h-3" /> No change</span>
+                      : <span className={`inline-flex items-center gap-1 text-xs font-semibold ${up ? "text-emerald-400" : "text-rose-400"}`}>
+                          {up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                          {up ? "+" : ""}{fmtFn(Math.abs(diff))} vs last week
+                        </span>
+                    }
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Records */}
       {(bestWeek || bestMonth) && (

@@ -4,26 +4,26 @@ import { redirect } from "next/navigation";
 import {
   getTodayCheckin, getGymStreak, getScoreAverages, getIOMemberCount,
 } from "@/lib/io-queries";
-import { getCheckinDateKey, scoreColor, scoreBg, scoreLabel, DAY_LABELS, todayDayOfWeek } from "@/lib/io-score";
+import { getCheckinDateKey, scoreColor, scoreLabel } from "@/lib/io-score";
 import { getLoggedDates, calculateStreak } from "@/lib/queries";
+import { fetchTrelloBoards, fetchTrelloCards } from "@/app/dashboard/io/trello/actions";
+import TrelloMissions from "@/components/io/TrelloMissions";
 import { Zap, Flame, Target, TrendingUp, ArrowRight, CheckCircle2, Clock } from "lucide-react";
 
+const TRELLO_KEY    = process.env.NEXT_PUBLIC_TRELLO_API_KEY ?? "";
+const APP_URL       = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+const TRELLO_AUTH   = `https://trello.com/1/authorize?response_type=token&key=${TRELLO_KEY}&name=ApexCard&expiration=never&scope=read%2Cwrite&return_url=${encodeURIComponent(APP_URL + "/trello/callback")}`;
+
 function ScoreArc({ score }: { score: number }) {
-  const r = 40;
-  const circ = 2 * Math.PI * r;
-  const dash = (score / 100) * circ;
+  const r = 40, circ = 2 * Math.PI * r;
+  const dash  = (score / 100) * circ;
   const color = score >= 85 ? "#34d399" : score >= 65 ? "#fbbf24" : "#f87171";
   return (
     <svg width="100" height="100" viewBox="0 0 100 100" className="shrink-0">
       <circle cx="50" cy="50" r={r} fill="none" stroke="#1e2130" strokeWidth="8" />
-      <circle
-        cx="50" cy="50" r={r} fill="none"
-        stroke={color} strokeWidth="8"
-        strokeDasharray={`${dash} ${circ - dash}`}
-        strokeLinecap="round"
-        transform="rotate(-90 50 50)"
-        style={{ transition: "stroke-dasharray 0.6s ease" }}
-      />
+      <circle cx="50" cy="50" r={r} fill="none" stroke={color} strokeWidth="8"
+        strokeDasharray={`${dash} ${circ - dash}`} strokeLinecap="round"
+        transform="rotate(-90 50 50)" style={{ transition: "stroke-dasharray 0.6s ease" }} />
       <text x="50" y="46" textAnchor="middle" fill={color} fontSize="16" fontWeight="800">{score}</text>
       <text x="50" y="60" textAnchor="middle" fill="#6b7280" fontSize="9">/100</text>
     </svg>
@@ -45,8 +45,7 @@ function ScoreBreakdownRow({ label, value, max, color }: { label: string; value:
 function Sparkline({ data }: { data: { performance_score: number }[] }) {
   if (data.length < 2) return null;
   const vals = data.map(d => d.performance_score);
-  const min  = Math.min(...vals);
-  const max  = Math.max(...vals);
+  const min = Math.min(...vals), max = Math.max(...vals);
   const range = Math.max(max - min, 1);
   const W = 120, H = 32;
   const pts = vals.map((v, i) => {
@@ -72,17 +71,31 @@ export default async function IODashboardPage() {
     .eq("id", user.id)
     .single();
 
-  const pref       = (profile?.tracking_preference ?? "daily") as "daily" | "weekly";
-  const dateKey    = getCheckinDateKey(pref);
-  const firstName  = profile?.full_name?.split(" ")[0] ?? "there";
+  const pref      = (profile?.tracking_preference ?? "daily") as "daily" | "weekly";
+  const dateKey   = getCheckinDateKey(pref);
+  const firstName = profile?.full_name?.split(" ")[0] ?? "there";
 
-  const [checkin, gymStreak, salesStreak, averages, memberCount] = await Promise.all([
-    getTodayCheckin(user.id, dateKey),
-    getGymStreak(user.id),
-    getLoggedDates(user.id).then(calculateStreak),
-    getScoreAverages(user.id),
-    getIOMemberCount(),
-  ]);
+  // Trello connection
+  const { data: trelloConn } = await supabase
+    .from("trello_connections")
+    .select("token, board_id, board_name")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const [checkin, gymStreak, salesStreak, averages, memberCount, trelloBoards, trelloCards] =
+    await Promise.all([
+      getTodayCheckin(user.id, dateKey),
+      getGymStreak(user.id),
+      getLoggedDates(user.id).then(calculateStreak),
+      getScoreAverages(user.id),
+      getIOMemberCount(),
+      trelloConn?.token && !trelloConn.board_id
+        ? fetchTrelloBoards(trelloConn.token)
+        : Promise.resolve([]),
+      trelloConn?.token && trelloConn.board_id
+        ? fetchTrelloCards(trelloConn.token, trelloConn.board_id)
+        : Promise.resolve([]),
+    ]);
 
   const periodLabel = pref === "daily" ? "today" : "this week";
   const checkedIn   = !!checkin;
@@ -105,7 +118,6 @@ export default async function IODashboardPage() {
           </p>
           <p className="text-xs text-white/30 mt-1 italic">Execute daily. Improve always. ⚔️</p>
         </div>
-
         {!checkedIn && (
           <Link
             href="/dashboard/io/checkin"
@@ -136,9 +148,9 @@ export default async function IODashboardPage() {
                 </p>
               </div>
               <div className="space-y-2.5">
-                <ScoreBreakdownRow label="Execution"  value={checkin.score_accountability} max={40} color="bg-white"         />
-                <ScoreBreakdownRow label="Fitness"    value={checkin.score_fitness}        max={35} color="bg-emerald-500"   />
-                <ScoreBreakdownRow label="Work/Sales" value={checkin.score_work}           max={25} color="bg-indigo-500"    />
+                <ScoreBreakdownRow label="Execution"  value={checkin.score_accountability} max={40} color="bg-white"       />
+                <ScoreBreakdownRow label="Fitness"    value={checkin.score_fitness}        max={35} color="bg-emerald-500" />
+                <ScoreBreakdownRow label="Work/Sales" value={checkin.score_work}           max={25} color="bg-indigo-500"  />
               </div>
             </div>
           </div>
@@ -168,10 +180,10 @@ export default async function IODashboardPage() {
       {/* Streaks + averages */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: "Execution Streak", value: gymStreak,              suffix: "days",  icon: Flame,     color: "text-orange-400" },
-          { label: "Sales Streak",     value: salesStreak,            suffix: "days",  icon: TrendingUp, color: "text-indigo-400" },
-          { label: "Weekly Avg",       value: averages.weekly ?? "—", suffix: averages.weekly ? "/100" : "",  icon: Zap,    color: averages.weekly ? scoreColor(averages.weekly as number) : "text-[#6b7280]" },
-          { label: "Monthly Avg",      value: averages.monthly ?? "—",suffix: averages.monthly ? "/100" : "", icon: Target, color: averages.monthly ? scoreColor(averages.monthly as number) : "text-[#6b7280]" },
+          { label: "Execution Streak", value: gymStreak,               suffix: "days",  icon: Flame,      color: "text-orange-400" },
+          { label: "Sales Streak",     value: salesStreak,             suffix: "days",  icon: TrendingUp,  color: "text-indigo-400" },
+          { label: "Weekly Avg",       value: averages.weekly  ?? "—", suffix: averages.weekly  ? "/100" : "", icon: Zap,    color: averages.weekly  ? scoreColor(averages.weekly  as number) : "text-[#6b7280]" },
+          { label: "Monthly Avg",      value: averages.monthly ?? "—", suffix: averages.monthly ? "/100" : "", icon: Target, color: averages.monthly ? scoreColor(averages.monthly as number) : "text-[#6b7280]" },
         ].map(({ label, value, suffix, icon: Icon, color }) => (
           <div key={label} className="bg-[#111318] border border-[#1e2130] rounded-xl p-4">
             <div className="flex items-center gap-1.5 mb-2">
@@ -185,7 +197,7 @@ export default async function IODashboardPage() {
         ))}
       </div>
 
-      {/* Score history sparkline */}
+      {/* Execution trend */}
       {averages.history.length >= 2 && (
         <div className="bg-[#111318] border border-[#1e2130] rounded-xl p-5 flex items-center justify-between gap-4">
           <div>
@@ -196,17 +208,28 @@ export default async function IODashboardPage() {
         </div>
       )}
 
+      {/* Missions (Trello) */}
+      <div>
+        <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest mb-3">Missions</p>
+        <TrelloMissions
+          connected={!!trelloConn}
+          connectUrl={TRELLO_AUTH}
+          boards={trelloBoards}
+          boardId={trelloConn?.board_id ?? null}
+          boardName={trelloConn?.board_name ?? null}
+          cards={trelloCards}
+        />
+      </div>
+
       {/* Quick links */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { href: "/dashboard/io/checkin",     label: "Debrief",      desc: pref === "daily" ? "Daily log" : "Weekly log" },
-          { href: "/dashboard/io/training",    label: "Training",     desc: "Split + calendar" },
-          { href: "/dashboard/io/leaderboard", label: "Brotherhood",  desc: "IO rankings" },
-          { href: "/dashboard/io/body",        label: "Body",         desc: "Weight + PRs" },
+          { href: "/dashboard/io/checkin",     label: "Debrief",     desc: pref === "daily" ? "Daily log" : "Weekly log" },
+          { href: "/dashboard/io/training",    label: "Training",    desc: "Split + calendar" },
+          { href: "/dashboard/io/leaderboard", label: "Brotherhood", desc: "IO rankings" },
+          { href: "/dashboard/io/body",        label: "Body",        desc: "Weight + PRs" },
         ].map(({ href, label, desc }) => (
-          <Link
-            key={href}
-            href={href}
+          <Link key={href} href={href}
             className="bg-[#111318] border border-[#1e2130] hover:border-white/20 rounded-xl p-4 transition-colors group"
           >
             <p className="font-semibold text-sm text-[#f0f2f8] group-hover:text-white transition-colors">{label}</p>
