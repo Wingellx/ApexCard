@@ -1,7 +1,7 @@
-import { Award, ExternalLink, ShieldCheck, Download } from "lucide-react";
+import { Award, ExternalLink, ShieldCheck, Download, Trophy } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAllCallLogs, getProfileFull } from "@/lib/queries";
+import { getAllCallLogs, getProfileFull, computeBestPeriods, weekRangeLabel, monthKeyLabel } from "@/lib/queries";
 import CopyLinkButton from "@/components/dashboard/CopyLinkButton";
 import VerificationForm from "@/components/dashboard/VerificationForm";
 
@@ -62,6 +62,8 @@ export default async function StatsPage() {
       </div>
     );
   }
+
+  const { bestWeek, bestMonth } = computeBestPeriods(logs);
 
   const totals = logs.reduce(
     (a, r) => ({
@@ -155,6 +157,45 @@ export default async function StatsPage() {
           </div>
         </div>
       </div>
+
+      {/* Records */}
+      {(bestWeek || bestMonth) && (
+        <div className="bg-[#111318] border border-[#1e2130] rounded-xl overflow-hidden mb-4">
+          <div className="h-[2px] bg-amber-500 shadow-[0_2px_14px_2px_rgba(245,158,11,0.28)]" />
+          <div className="p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Trophy className="w-4 h-4 text-amber-400" />
+              <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest">Personal Records</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-6">
+              {bestWeek && (
+                <div>
+                  <p className="text-xs text-[#6b7280] mb-2">Best Week Ever</p>
+                  <p className="text-2xl font-extrabold text-amber-400 tabular-nums mb-0.5">{fmt(bestWeek.cash)}</p>
+                  <p className="text-xs text-[#4b5563] mb-3">{weekRangeLabel(bestWeek.key)}</p>
+                  <div className="flex gap-4 text-xs text-[#6b7280]">
+                    <span><span className="text-[#9ca3af] font-semibold">{bestWeek.calls}</span> calls</span>
+                    <span><span className="text-[#9ca3af] font-semibold">{bestWeek.offersTaken}</span> closes</span>
+                    <span><span className="text-[#9ca3af] font-semibold">{fmt(bestWeek.commission)}</span> commission</span>
+                  </div>
+                </div>
+              )}
+              {bestMonth && (
+                <div className={bestWeek ? "border-t border-[#1e2130] pt-4 md:pt-0 md:border-t-0 md:border-l md:pl-6" : ""}>
+                  <p className="text-xs text-[#6b7280] mb-2">Best Month Ever</p>
+                  <p className="text-2xl font-extrabold text-amber-400 tabular-nums mb-0.5">{fmt(bestMonth.cash)}</p>
+                  <p className="text-xs text-[#4b5563] mb-3">{monthKeyLabel(bestMonth.key)}</p>
+                  <div className="flex gap-4 text-xs text-[#6b7280]">
+                    <span><span className="text-[#9ca3af] font-semibold">{bestMonth.calls}</span> calls</span>
+                    <span><span className="text-[#9ca3af] font-semibold">{bestMonth.offersTaken}</span> closes</span>
+                    <span><span className="text-[#9ca3af] font-semibold">{fmt(bestMonth.commission)}</span> commission</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Share callout */}
       <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl px-5 py-4 flex items-center justify-between mb-4">

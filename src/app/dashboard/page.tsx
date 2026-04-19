@@ -3,7 +3,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
   getMonthCallLogs, getLast30DaysLogs, getMonthGoals, getProfile,
-  getLoggedDates, calculateStreak,
+  getLoggedDates, calculateStreak, getDateRangeLogs,
+  thisWeekBounds, lastWeekBounds, lastMonthBounds,
 } from "@/lib/queries";
 import MetricCard from "@/components/dashboard/MetricCard";
 import GoalsCard from "@/components/dashboard/GoalsCard";
@@ -12,6 +13,8 @@ import DailyCashChart from "@/components/dashboard/DailyCashChart";
 import CloseRateTrendChart from "@/components/dashboard/CloseRateTrendChart";
 import StreakBadge from "@/components/dashboard/StreakBadge";
 import { NoLogsState, NoGoalsState } from "@/components/dashboard/EmptyState";
+import WeeklySummary from "@/components/dashboard/WeeklySummary";
+import MonthlySummaryCard from "@/components/dashboard/MonthlySummaryCard";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -75,12 +78,19 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [{ rows }, last30, goals, profile, allDates] = await Promise.all([
-    user ? getMonthCallLogs(user.id)   : Promise.resolve({ rows: [] as never[] }),
-    user ? getLast30DaysLogs(user.id)  : Promise.resolve([] as never[]),
-    user ? getMonthGoals(user.id)      : Promise.resolve(null),
-    user ? getProfile(user.id)         : Promise.resolve(null),
-    user ? getLoggedDates(user.id)     : Promise.resolve([] as string[]),
+  const tw = thisWeekBounds();
+  const lw = lastWeekBounds();
+  const lm = lastMonthBounds();
+
+  const [{ rows }, last30, goals, profile, allDates, thisWeekLogs, lastWeekLogs, lastMonthLogs] = await Promise.all([
+    user ? getMonthCallLogs(user.id)                            : Promise.resolve({ rows: [] as never[] }),
+    user ? getLast30DaysLogs(user.id)                           : Promise.resolve([] as never[]),
+    user ? getMonthGoals(user.id)                               : Promise.resolve(null),
+    user ? getProfile(user.id)                                  : Promise.resolve(null),
+    user ? getLoggedDates(user.id)                              : Promise.resolve([] as string[]),
+    user ? getDateRangeLogs(user.id, tw.start, tw.end)          : Promise.resolve([] as never[]),
+    user ? getDateRangeLogs(user.id, lw.start, lw.end)          : Promise.resolve([] as never[]),
+    user ? getDateRangeLogs(user.id, lm.first, lm.last)         : Promise.resolve([] as never[]),
   ]);
 
   // ── Aggregates ───────────────────────────────────────────────────
@@ -193,6 +203,14 @@ export default async function DashboardPage() {
         <div className="animate-in grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6" style={{ animationDelay: "500ms" }}>
           <DailyCashChart data={dailyCashData} />
           <CloseRateTrendChart data={closeRateTrend} avgCloseRate={avgCloseRate30} />
+        </div>
+      )}
+
+      {/* Weekly + Monthly summary */}
+      {hasData && (
+        <div className="animate-in grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6" style={{ animationDelay: "560ms" }}>
+          <WeeklySummary thisWeekLogs={thisWeekLogs as Parameters<typeof WeeklySummary>[0]["thisWeekLogs"]} lastWeekLogs={lastWeekLogs as Parameters<typeof WeeklySummary>[0]["lastWeekLogs"]} />
+          <MonthlySummaryCard thisMonthLogs={rows as Parameters<typeof MonthlySummaryCard>[0]["thisMonthLogs"]} lastMonthLogs={lastMonthLogs as Parameters<typeof MonthlySummaryCard>[0]["lastMonthLogs"]} goals={goals} monthLabel={monthLabel()} />
         </div>
       )}
 

@@ -120,6 +120,18 @@ export function computeBestPeriods(logs: RawLog[]): {
   return { bestWeek, bestMonth };
 }
 
+export async function getDateRangeLogs(userId: string, from: string, to: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("call_logs")
+    .select("date, calls_taken, shows, offers_made, offers_taken, cash_collected, commission_earned")
+    .eq("user_id", userId)
+    .gte("date", from)
+    .lte("date", to)
+    .order("date", { ascending: true });
+  return data ?? [];
+}
+
 export async function getMonthCallLogs(userId: string) {
   const supabase = await createClient();
   const { first, last } = monthBounds();
