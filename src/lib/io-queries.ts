@@ -118,13 +118,20 @@ export interface IOLBRow {
 export async function getIOLeaderboard(tab: LBTab): Promise<IOLBRow[]> {
   const admin = createAdminClient();
 
-  // Get all IO members
-  const { data: members } = await admin
+  // Fetch all team_members + profiles, then JS-filter — avoids PostgREST .eq() returning nothing
+  const { data: allMembers, error: membersErr } = await admin
     .from("team_members")
-    .select("user_id, profiles(id, full_name, username, role, tracking_preference)")
-    .eq("team_id", IO_TEAM_ID);
+    .select("user_id, team_id, profiles(id, full_name, username, role, tracking_preference)");
 
-  if (!members || members.length === 0) return [];
+  if (membersErr) {
+    console.error("[getIOLeaderboard] team_members fetch error:", membersErr.message);
+    return [];
+  }
+
+  const members = (allMembers ?? []).filter(m => m.team_id === IO_TEAM_ID);
+  console.log("[getIOLeaderboard] total rows:", allMembers?.length, "| IO members:", members.length);
+
+  if (members.length === 0) return [];
 
   const userIds = members.map(m => m.user_id);
   const since = new Date();
@@ -231,9 +238,14 @@ export async function getScoreAverages(userId: string) {
 
 export async function getIOMemberCount(): Promise<number> {
   const admin = createAdminClient();
-  const { count } = await admin
+  const { data, error } = await admin
     .from("team_members")
-    .select("*", { count: "exact", head: true })
-    .eq("team_id", IO_TEAM_ID);
-  return count ?? 0;
+    .select("team_id");
+  if (error) {
+    console.error("[getIOMemberCount]", error.message);
+    return 0;
+  }
+  const n = (data ?? []).filter(r => r.team_id === IO_TEAM_ID).length;
+  console.log("[getIOMemberCount] total rows:", data?.length, "| IO count:", n);
+  return n;
 }

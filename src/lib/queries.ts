@@ -420,17 +420,18 @@ export async function getTeamByInviteCode(inviteCode: string) {
 
   if (!team) return null;
 
-  const { count } = await admin
+  const { data: teamMembersData } = await admin
     .from("team_members")
-    .select("*", { count: "exact", head: true })
-    .eq("team_id", team.id);
+    .select("team_id");
+
+  const memberCount = (teamMembersData ?? []).filter(r => r.team_id === team.id).length;
 
   return {
     id:          team.id          as string,
     name:        team.name        as string,
     description: team.description as string | null,
     logo_url:    team.logo_url    as string | null,
-    memberCount: count ?? 0,
+    memberCount,
   };
 }
 
@@ -453,12 +454,19 @@ export async function getTeamLeaderboard(
 ): Promise<TeamMemberStat[]> {
   const admin = createAdminClient();
 
-  const { data: members } = await admin
+  const { data: allMembers, error: membersErr } = await admin
     .from("team_members")
-    .select("user_id, profiles(full_name, email, username, role, is_verified)")
-    .eq("team_id", teamId);
+    .select("user_id, team_id, profiles(full_name, email, username, role, is_verified)");
 
-  if (!members?.length) return [];
+  if (membersErr) {
+    console.error("[getTeamLeaderboard] team_members fetch error:", membersErr.message);
+    return [];
+  }
+
+  const members = (allMembers ?? []).filter(m => m.team_id === teamId);
+  console.log("[getTeamLeaderboard] total rows:", allMembers?.length, "| team members:", members.length, "| teamId:", teamId);
+
+  if (!members.length) return [];
 
   const userIds = members.map((m) => m.user_id as string);
 
