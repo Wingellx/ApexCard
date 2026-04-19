@@ -6,13 +6,16 @@ import { IO_TEAM_ID, computeScore, getCurrentWeekMonday } from "@/lib/io-score";
 
 export async function getIsIOmember(userId: string): Promise<boolean> {
   const admin = createAdminClient();
-  const { data } = await admin
+  const { data, error } = await admin
     .from("team_members")
-    .select("team_id")
-    .eq("user_id", userId)
-    .eq("team_id", IO_TEAM_ID)
-    .maybeSingle();
-  return !!data;
+    .select("user_id, team_id");
+  if (error) {
+    console.error("[getIsIOmember] fetch error:", error.message);
+    return false;
+  }
+  const found = (data ?? []).some(r => r.user_id === userId && r.team_id === IO_TEAM_ID);
+  console.log("[getIsIOmember] total rows:", data?.length, "| userId:", userId, "| found:", found);
+  return found;
 }
 
 // ── Check-ins ─────────────────────────────────────────────────────────────────
