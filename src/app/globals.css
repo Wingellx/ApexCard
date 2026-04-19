@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+@keyframes border-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.animate-border-spin {
+  animation: border-spin 8s linear infinite;
+}
+
 @keyframes slide-up-fade {
   from {
     opacity: 0;

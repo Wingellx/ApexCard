@@ -330,7 +330,7 @@ export async function getPublicLifetimeStats(userId: string) {
       .eq("user_id", userId),
     admin
       .from("profiles")
-      .select("full_name, email, is_verified, verified_by_name, verified_by_company, username")
+      .select("full_name, email, is_verified, verified_by_name, verified_by_company, username, role")
       .eq("id", userId)
       .maybeSingle(),
   ]);
@@ -355,10 +355,13 @@ export async function getPublicLifetimeStats(userId: string) {
   const bestDay      = Math.max(...logs.map((r) => Number(r.cash_collected ?? 0)));
   const daysLogged   = logs.length;
   const name            = profile?.full_name?.trim() || profile?.email?.split("@")[0] || "Sales Pro";
-  const isVerified      = profile?.is_verified      ?? false;
+  const isVerified        = profile?.is_verified        ?? false;
   const verifiedByName    = profile?.verified_by_name    ?? null;
   const verifiedByCompany = profile?.verified_by_company ?? null;
   const username          = profile?.username             ?? null;
+  const role              = profile?.role                 ?? null;
+  const sortedDates       = [...logs.map((r) => r.date as string)].sort().reverse();
+  const streak            = calculateStreak(sortedDates);
 
-  return { totals, showRate, closeRate, cashPerClose, bestDay, daysLogged, name, isVerified, verifiedByName, verifiedByCompany, username };
+  return { totals, showRate, closeRate, cashPerClose, bestDay, daysLogged, name, isVerified, verifiedByName, verifiedByCompany, username, role, streak };
 }
