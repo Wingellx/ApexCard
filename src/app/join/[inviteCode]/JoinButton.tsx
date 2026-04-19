@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { joinTeam } from "./actions";
 import { XCircle, ArrowRight } from "lucide-react";
 
-export default function JoinButton({ inviteCode, teamName }: { inviteCode: string; teamName: string }) {
+export default function JoinButton({ inviteCode, teamName, isIO }: { inviteCode: string; teamName: string; isIO?: boolean }) {
   const action = joinTeam.bind(null, inviteCode);
   const [state, formAction, isPending] = useActionState(action, null);
 
@@ -19,7 +19,11 @@ export default function JoinButton({ inviteCode, teamName }: { inviteCode: strin
       <button
         type="submit"
         disabled={isPending}
-        className="inline-flex items-center justify-center gap-2 w-full bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-6 py-3 rounded-xl transition-colors shadow-lg shadow-indigo-500/20"
+        className={`inline-flex items-center justify-center gap-2 w-full disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold px-6 py-3 rounded-xl transition-colors shadow-lg ${
+          isIO
+            ? "bg-white hover:bg-white/90 text-black shadow-white/10"
+            : "bg-indigo-500 hover:bg-indigo-400 text-white shadow-indigo-500/20"
+        }`}
       >
         {isPending ? "Joining…" : <>{`Join ${teamName}`} <ArrowRight className="w-4 h-4" /></>}
       </button>

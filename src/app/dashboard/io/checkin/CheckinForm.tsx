@@ -62,7 +62,7 @@ function FocusSlider({ value, onChange }: { value: number; onChange: (v: number)
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Brain className="w-4 h-4 text-[#6b7280]" />
-          <p className="text-sm font-semibold text-[#f0f2f8]">Rate your focus</p>
+          <p className="text-sm font-semibold text-[#f0f2f8]">Rate your execution intensity</p>
         </div>
         <span className={`text-xl font-extrabold tabular-nums ${color}`}>{value}<span className="text-xs text-[#6b7280] font-normal">/10</span></span>
       </div>
@@ -72,10 +72,10 @@ function FocusSlider({ value, onChange }: { value: number; onChange: (v: number)
         min="1" max="10" step="1"
         value={value}
         onChange={e => onChange(parseInt(e.target.value))}
-        className="w-full accent-violet-500"
+        className="w-full accent-white"
       />
       <div className="flex justify-between text-[10px] text-[#374151] mt-1">
-        <span>1 Unfocused</span>
+        <span>1 Distracted</span>
         <span>10 Locked in</span>
       </div>
     </div>
@@ -95,14 +95,13 @@ export default function CheckinForm({ pref, existing }: Props) {
 
   useEffect(() => {
     if (state?.success) {
-      success("Check-in saved!");
+      success("Debrief saved!");
       router.push("/dashboard/io");
     }
     if (state?.error) toastError(state.error);
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const periodLabel = pref === "daily" ? "today" : "this week";
-  const workLabel   = pref === "daily" ? "Calls logged today" : "Total calls this week";
+  const workLabel = pref === "daily" ? "Calls logged today" : "Total calls this week";
 
   return (
     <form action={formAction} className="space-y-4">
@@ -118,7 +117,7 @@ export default function CheckinForm({ pref, existing }: Props) {
         <div className="flex items-center gap-2 mb-3">
           <Briefcase className="w-4 h-4 text-[#6b7280]" />
           <p className="text-sm font-semibold text-[#f0f2f8]">{workLabel}</p>
-          <span className="text-[10px] text-[#374151] ml-auto">max 35 pts at {pref === "daily" ? "15+" : "75+"}</span>
+          <span className="text-[10px] text-[#374151] ml-auto">max 25 pts at {pref === "daily" ? "15+" : "75+"}</span>
         </div>
         <input
           type="number"
@@ -127,12 +126,12 @@ export default function CheckinForm({ pref, existing }: Props) {
           value={workUnits}
           onChange={e => setWorkUnits(e.target.value)}
           placeholder={pref === "daily" ? "e.g. 12" : "e.g. 60"}
-          className="w-full bg-[#0d0f15] border border-[#1e2130] rounded-lg px-4 py-3 text-sm text-[#f0f2f8] placeholder-[#6b7280] focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
+          className="w-full bg-[#0d0f15] border border-[#1e2130] rounded-lg px-4 py-3 text-sm text-[#f0f2f8] placeholder-[#6b7280] focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20 transition-colors"
         />
       </div>
 
       <YesNo
-        label={`Did you complete your ${periodLabel === "today" ? "daily" : "weekly"} goal?`}
+        label={`Did you complete your ${pref === "daily" ? "daily" : "weekly"} mission?`}
         icon={<Target className="w-4 h-4" />}
         name="goal_completed"
         value={goal}
@@ -144,7 +143,7 @@ export default function CheckinForm({ pref, existing }: Props) {
       <div className="bg-[#111318] border border-[#1e2130] rounded-xl p-5">
         <div className="flex items-center gap-2 mb-3">
           <Star className="w-4 h-4 text-[#6b7280]" />
-          <p className="text-sm font-semibold text-[#f0f2f8]">One thing you accomplished</p>
+          <p className="text-sm font-semibold text-[#f0f2f8]">What did you execute on today?</p>
           <span className="text-[10px] text-[#374151] ml-auto">optional</span>
         </div>
         <textarea
@@ -153,7 +152,7 @@ export default function CheckinForm({ pref, existing }: Props) {
           onChange={e => setAccomplishment(e.target.value)}
           placeholder={`e.g. "Closed a $5k deal on a cold call"`}
           rows={2}
-          className="w-full bg-[#0d0f15] border border-[#1e2130] rounded-lg px-4 py-3 text-sm text-[#f0f2f8] placeholder-[#6b7280] focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors resize-none"
+          className="w-full bg-[#0d0f15] border border-[#1e2130] rounded-lg px-4 py-3 text-sm text-[#f0f2f8] placeholder-[#6b7280] focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20 transition-colors resize-none"
         />
       </div>
 
@@ -167,10 +166,10 @@ export default function CheckinForm({ pref, existing }: Props) {
       <button
         type="submit"
         disabled={isPending}
-        className="w-full flex items-center justify-center gap-2 bg-violet-500 hover:bg-violet-400 disabled:opacity-50 text-white font-semibold py-3.5 rounded-xl transition-colors shadow-lg shadow-violet-500/20"
+        className="w-full flex items-center justify-center gap-2 bg-white hover:bg-white/90 disabled:opacity-50 text-black font-semibold py-3.5 rounded-xl transition-colors shadow-lg shadow-white/10"
       >
         {isPending ? "Saving…" : (
-          <><CheckCircle2 className="w-4 h-4" /> {existing ? "Update check-in" : "Submit check-in"}</>
+          <><CheckCircle2 className="w-4 h-4" /> {existing ? "Update debrief" : "Submit debrief"}</>
         )}
       </button>
     </form>

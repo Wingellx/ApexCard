@@ -56,7 +56,7 @@ function Sparkline({ data }: { data: { performance_score: number }[] }) {
   }).join(" ");
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="opacity-60">
-      <polyline points={pts} fill="none" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points={pts} fill="none" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -94,24 +94,25 @@ export default async function IODashboardPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-6 h-6 bg-violet-500/20 border border-violet-500/30 rounded-lg flex items-center justify-center">
-              <Zap className="w-3.5 h-3.5 text-violet-400" />
+            <div className="w-6 h-6 bg-white/10 border border-white/20 rounded-lg flex items-center justify-center">
+              <span className="text-xs">⚔️</span>
             </div>
-            <span className="text-xs font-semibold text-violet-400 uppercase tracking-widest">IO Community</span>
+            <span className="text-xs font-semibold text-white/60 uppercase tracking-widest">IO Brotherhood</span>
           </div>
           <h1 className="text-2xl font-extrabold text-[#f0f2f8] tracking-tight">Hey, {firstName}.</h1>
           <p className="text-sm text-[#6b7280] mt-0.5">
-            {memberCount} member{memberCount !== 1 ? "s" : ""} · {pref === "daily" ? "Daily" : "Weekly"} tracker
+            {memberCount} brother{memberCount !== 1 ? "s" : ""} · {pref === "daily" ? "Daily" : "Weekly"} tracker
           </p>
+          <p className="text-xs text-white/30 mt-1 italic">Execute daily. Improve always. ⚔️</p>
         </div>
 
         {!checkedIn && (
           <Link
             href="/dashboard/io/checkin"
-            className="flex items-center gap-2 bg-violet-500 hover:bg-violet-400 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors shadow-lg shadow-violet-500/20"
+            className="flex items-center gap-2 bg-white hover:bg-white/90 text-black text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors shadow-lg shadow-white/10"
           >
             <Target className="w-4 h-4" />
-            Check in {periodLabel}
+            Log debrief {periodLabel}
             <ArrowRight className="w-4 h-4" />
           </Link>
         )}
@@ -127,7 +128,7 @@ export default async function IODashboardPage() {
                 <div className="flex items-center gap-2 mb-0.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                   <p className="text-sm font-semibold text-[#f0f2f8] capitalize">
-                    {scoreLabel(checkin.performance_score)} performance {periodLabel}
+                    {scoreLabel(checkin.performance_score)} execution {periodLabel}
                   </p>
                 </div>
                 <p className={`text-2xl font-extrabold ${scoreColor(checkin.performance_score)}`}>
@@ -135,31 +136,31 @@ export default async function IODashboardPage() {
                 </p>
               </div>
               <div className="space-y-2.5">
-                <ScoreBreakdownRow label="Work"          value={checkin.score_work}           max={35} color="bg-indigo-500"  />
-                <ScoreBreakdownRow label="Fitness"       value={checkin.score_fitness}        max={35} color="bg-emerald-500" />
-                <ScoreBreakdownRow label="Accountability" value={checkin.score_accountability} max={30} color="bg-amber-500"  />
+                <ScoreBreakdownRow label="Execution"  value={checkin.score_accountability} max={40} color="bg-white"         />
+                <ScoreBreakdownRow label="Fitness"    value={checkin.score_fitness}        max={35} color="bg-emerald-500"   />
+                <ScoreBreakdownRow label="Work/Sales" value={checkin.score_work}           max={25} color="bg-indigo-500"    />
               </div>
             </div>
           </div>
           {checkin.accomplishment && (
             <div className="mt-5 pt-5 border-t border-[#1e2130]">
-              <p className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest mb-1">Accomplished</p>
+              <p className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest mb-1">Executed on</p>
               <p className="text-sm text-[#9ca3af] italic">&ldquo;{checkin.accomplishment}&rdquo;</p>
             </div>
           )}
         </div>
       ) : (
         <div className="bg-[#111318] border border-dashed border-[#1e2130] rounded-2xl p-8 text-center">
-          <div className="w-12 h-12 bg-violet-500/10 border border-violet-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-            <Clock className="w-6 h-6 text-violet-400" />
+          <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center mx-auto mb-3">
+            <Clock className="w-6 h-6 text-white/40" />
           </div>
-          <p className="font-semibold text-[#f0f2f8] mb-1">No check-in {periodLabel}</p>
-          <p className="text-sm text-[#6b7280] mb-5">Log your workout, work, and focus to get your score.</p>
+          <p className="font-semibold text-[#f0f2f8] mb-1">No debrief {periodLabel}</p>
+          <p className="text-sm text-[#6b7280] mb-5">Log your workout, work, and execution to get your score.</p>
           <Link
             href="/dashboard/io/checkin"
-            className="inline-flex items-center gap-2 bg-violet-500 hover:bg-violet-400 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+            className="inline-flex items-center gap-2 bg-white hover:bg-white/90 text-black text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
           >
-            Start check-in <ArrowRight className="w-4 h-4" />
+            Start debrief <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       )}
@@ -167,10 +168,10 @@ export default async function IODashboardPage() {
       {/* Streaks + averages */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: "Gym Streak",    value: gymStreak,         suffix: "days", icon: Flame,    color: "text-orange-400" },
-          { label: "Sales Streak",  value: salesStreak,       suffix: "days", icon: TrendingUp,color:"text-indigo-400"  },
-          { label: "Weekly Avg",    value: averages.weekly ?? "—", suffix: averages.weekly ? "/100" : "", icon: Zap,  color: averages.weekly ? scoreColor(averages.weekly as number) : "text-[#6b7280]" },
-          { label: "Monthly Avg",   value: averages.monthly ?? "—",suffix:averages.monthly ? "/100" : "",icon: Target,color: averages.monthly ? scoreColor(averages.monthly as number) : "text-[#6b7280]" },
+          { label: "Execution Streak", value: gymStreak,              suffix: "days",  icon: Flame,     color: "text-orange-400" },
+          { label: "Sales Streak",     value: salesStreak,            suffix: "days",  icon: TrendingUp, color: "text-indigo-400" },
+          { label: "Weekly Avg",       value: averages.weekly ?? "—", suffix: averages.weekly ? "/100" : "",  icon: Zap,    color: averages.weekly ? scoreColor(averages.weekly as number) : "text-[#6b7280]" },
+          { label: "Monthly Avg",      value: averages.monthly ?? "—",suffix: averages.monthly ? "/100" : "", icon: Target, color: averages.monthly ? scoreColor(averages.monthly as number) : "text-[#6b7280]" },
         ].map(({ label, value, suffix, icon: Icon, color }) => (
           <div key={label} className="bg-[#111318] border border-[#1e2130] rounded-xl p-4">
             <div className="flex items-center gap-1.5 mb-2">
@@ -188,8 +189,8 @@ export default async function IODashboardPage() {
       {averages.history.length >= 2 && (
         <div className="bg-[#111318] border border-[#1e2130] rounded-xl p-5 flex items-center justify-between gap-4">
           <div>
-            <p className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest mb-0.5">Score trend</p>
-            <p className="text-sm text-[#9ca3af]">Last {averages.history.length} check-ins</p>
+            <p className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest mb-0.5">Execution trend</p>
+            <p className="text-sm text-[#9ca3af]">Last {averages.history.length} debriefs</p>
           </div>
           <Sparkline data={averages.history} />
         </div>
@@ -198,17 +199,17 @@ export default async function IODashboardPage() {
       {/* Quick links */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { href: "/dashboard/io/checkin",     label: "Check-in",   desc: pref === "daily" ? "Daily log" : "Weekly log" },
-          { href: "/dashboard/io/training",    label: "Training",   desc: "Split + calendar" },
-          { href: "/dashboard/io/leaderboard", label: "Leaderboard",desc: "IO rankings" },
-          { href: "/dashboard/io/body",        label: "Body",       desc: "Weight + PRs" },
+          { href: "/dashboard/io/checkin",     label: "Debrief",      desc: pref === "daily" ? "Daily log" : "Weekly log" },
+          { href: "/dashboard/io/training",    label: "Training",     desc: "Split + calendar" },
+          { href: "/dashboard/io/leaderboard", label: "Brotherhood",  desc: "IO rankings" },
+          { href: "/dashboard/io/body",        label: "Body",         desc: "Weight + PRs" },
         ].map(({ href, label, desc }) => (
           <Link
             key={href}
             href={href}
-            className="bg-[#111318] border border-[#1e2130] hover:border-violet-500/30 rounded-xl p-4 transition-colors group"
+            className="bg-[#111318] border border-[#1e2130] hover:border-white/20 rounded-xl p-4 transition-colors group"
           >
-            <p className="font-semibold text-sm text-[#f0f2f8] group-hover:text-violet-300 transition-colors">{label}</p>
+            <p className="font-semibold text-sm text-[#f0f2f8] group-hover:text-white transition-colors">{label}</p>
             <p className="text-xs text-[#6b7280] mt-0.5">{desc}</p>
           </Link>
         ))}

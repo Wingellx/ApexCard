@@ -52,8 +52,10 @@ export default async function IOLeaderboardPage({
   return (
     <div className="px-4 sm:px-8 py-6 sm:py-8 max-w-[800px] space-y-5">
       <div>
-        <h1 className="text-2xl font-extrabold text-[#f0f2f8] tracking-tight">IO Leaderboard</h1>
-        <p className="text-sm text-[#6b7280] mt-1">Private to IO community members. Scores normalised across daily and weekly trackers.</p>
+        <h1 className="text-2xl font-extrabold text-[#f0f2f8] tracking-tight">Brotherhood Leaderboard ⚔️</h1>
+        <p className="text-sm text-[#6b7280] mt-1">
+          {rows.length} brother{rows.length !== 1 ? "s" : ""} executing · Scores normalised across daily and weekly trackers.
+        </p>
       </div>
 
       {/* Tabs */}
@@ -64,7 +66,7 @@ export default async function IOLeaderboardPage({
             href={`?tab=${key}`}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
               tab === key
-                ? "bg-violet-500/20 text-violet-300 border border-violet-500/30"
+                ? "bg-white/10 text-white border border-white/20"
                 : "text-[#6b7280] hover:text-[#9ca3af]"
             }`}
           >
@@ -77,7 +79,7 @@ export default async function IOLeaderboardPage({
       {/* Rows */}
       {rows.length === 0 ? (
         <div className="bg-[#111318] border border-[#1e2130] rounded-2xl p-12 text-center">
-          <p className="text-[#6b7280]">No data yet — check-ins will appear here once members start logging.</p>
+          <p className="text-[#6b7280]">No brothers have logged yet — debriefs will appear here once the brotherhood starts executing.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -91,7 +93,7 @@ export default async function IOLeaderboardPage({
                 key={row.userId}
                 className={`flex items-center gap-4 p-4 rounded-xl border transition-colors ${
                   isMe
-                    ? "border-violet-500/30 bg-violet-500/5"
+                    ? "border-white/20 bg-white/5"
                     : rank === 1
                     ? "border-amber-500/20 bg-amber-500/5"
                     : "border-[#1e2130] bg-[#111318]"
@@ -104,7 +106,7 @@ export default async function IOLeaderboardPage({
 
                 {/* Avatar */}
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-sm font-black text-white select-none"
-                  style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.3) 0%, rgba(99,102,241,0.3) 100%)", border: "1px solid rgba(139,92,246,0.2)" }}
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}
                 >
                   {ini}
                 </div>
@@ -113,15 +115,15 @@ export default async function IOLeaderboardPage({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-semibold text-[#f0f2f8] truncate">{row.fullName}</p>
-                    {isMe && <span className="text-[10px] font-bold text-violet-400 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded-full">You</span>}
+                    {isMe && <span className="text-[10px] font-bold text-white bg-white/10 border border-white/20 px-1.5 py-0.5 rounded-full">You</span>}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     <span className="text-[10px] text-[#6b7280]">{ROLE_LABELS[row.role] ?? row.role}</span>
                     <span className="text-[10px] text-[#374151]">·</span>
                     <div className="flex items-center gap-0.5">
                       {row.trackingPref === "daily"
-                        ? <Zap className="w-2.5 h-2.5 text-violet-400" />
-                        : <CalendarDays className="w-2.5 h-2.5 text-indigo-400" />}
+                        ? <Zap className="w-2.5 h-2.5 text-white/40" />
+                        : <CalendarDays className="w-2.5 h-2.5 text-white/40" />}
                       <span className="text-[10px] text-[#4b5563] capitalize">{row.trackingPref}</span>
                     </div>
                   </div>

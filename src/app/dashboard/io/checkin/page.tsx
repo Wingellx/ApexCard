@@ -27,10 +27,10 @@ export default async function CheckinPage() {
     <div className="px-4 sm:px-8 py-6 sm:py-8 max-w-[640px]">
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-[#f0f2f8] tracking-tight capitalize">
-          {pref === "daily" ? "Daily" : "Weekly"} Check-in
+          {pref === "daily" ? "Daily" : "Weekly"} Debrief
         </h1>
         <p className="text-sm text-[#6b7280] mt-1">
-          {existing ? `You've already checked in ${periodLabel}. Update anytime.` : `Log your performance for ${periodLabel}.`}
+          {existing ? `You've already debriefed ${periodLabel}. Update anytime.` : `Log your execution for ${periodLabel}.`}
         </p>
       </div>
 

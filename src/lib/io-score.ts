@@ -1,15 +1,15 @@
 export const IO_TEAM_ID = "00000000-0000-0000-0000-000000000010";
 export const IO_INVITE_CODE = "IO-2026";
 
-// Baseline work units for full work score (35 pts)
+// Baseline work units for full work score (25 pts)
 const DAILY_BASELINE = 15;   // calls per day
 const WEEKLY_BASELINE = 75;  // calls (or hours*2) per week
 
 export interface ScoreBreakdown {
-  total: number;        // 0–100
-  work: number;         // 0–35
-  fitness: number;      // 0–35
-  accountability: number; // 0–30
+  total: number;           // 0–100
+  work: number;            // 0–25
+  fitness: number;         // 0–35
+  accountability: number;  // 0–40
 }
 
 export function computeScore(
@@ -20,9 +20,9 @@ export function computeScore(
   trackingPreference: "daily" | "weekly"
 ): ScoreBreakdown {
   const baseline = trackingPreference === "daily" ? DAILY_BASELINE : WEEKLY_BASELINE;
-  const work           = Math.round(Math.min(workUnits / baseline, 1) * 35);
+  const work           = Math.round(Math.min(workUnits / baseline, 1) * 25);
   const fitness        = workoutCompleted ? 35 : 0;
-  const accountability = Math.round((goalCompleted ? 15 : 0) + (focusRating / 10) * 15);
+  const accountability = Math.round((goalCompleted ? 20 : 0) + (focusRating / 10) * 20);
   return { total: work + fitness + accountability, work, fitness, accountability };
 }
 

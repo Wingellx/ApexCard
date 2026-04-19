@@ -7,7 +7,7 @@ import { Zap, Target, Dumbbell, Trophy, Activity } from "lucide-react";
 
 const tabs = [
   { href: "/dashboard/io",             label: "Dashboard",  icon: Zap      },
-  { href: "/dashboard/io/checkin",     label: "Check-in",   icon: Target   },
+  { href: "/dashboard/io/checkin",     label: "Debrief",    icon: Target   },
   { href: "/dashboard/io/training",    label: "Training",   icon: Dumbbell },
   { href: "/dashboard/io/leaderboard", label: "Leaderboard",icon: Trophy   },
   { href: "/dashboard/io/body",        label: "Body",       icon: Activity },
@@ -34,7 +34,7 @@ export default function IONav() {
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-3.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors shrink-0",
                   isActive
-                    ? "border-violet-500 text-violet-300"
+                    ? "border-white/60 text-white"
                     : "border-transparent text-[#4b5563] hover:text-[#9ca3af] hover:border-[#2d3147]"
                 )}
               >
