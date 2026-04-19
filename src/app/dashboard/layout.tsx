@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileFull, getLoggedDates, calculateStreak, getUserTeam } from "@/lib/queries";
+import { getIsIOmember } from "@/lib/io-queries";
 import Sidebar from "@/components/dashboard/Sidebar";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -15,10 +16,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [profile, allDates, userTeam] = await Promise.all([
-    user ? getProfileFull(user.id)  : Promise.resolve(null),
-    user ? getLoggedDates(user.id)  : Promise.resolve([] as string[]),
-    user ? getUserTeam(user.id)     : Promise.resolve(null),
+  const [profile, allDates, userTeam, isIOmember] = await Promise.all([
+    user ? getProfileFull(user.id)   : Promise.resolve(null),
+    user ? getLoggedDates(user.id)   : Promise.resolve([] as string[]),
+    user ? getUserTeam(user.id)      : Promise.resolve(null),
+    user ? getIsIOmember(user.id)    : Promise.resolve(false),
   ]);
 
   if (profile && !profile.onboarding_completed) redirect("/onboarding");
@@ -47,6 +49,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         userInitial={userInitial}
         streak={streak}
         teamId={userTeam?.teamId ?? null}
+        isIOmember={isIOmember}
       />
       <div className="lg:ml-64 pt-14 lg:pt-0">
         {showUpgradeBanner && (

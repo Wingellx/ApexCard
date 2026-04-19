@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, PhoneCall, Target, History, Award,
-  Settings, LogOut, Menu, X, Trophy, User, Flame, Users,
+  Settings, LogOut, Menu, X, Trophy, User, Flame, Users, Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signout } from "@/app/auth/actions";
@@ -17,9 +17,10 @@ interface SidebarProps {
   userInitial: string;
   streak: number;
   teamId?: string | null;
+  isIOmember?: boolean;
 }
 
-function buildSections(teamId?: string | null) {
+function buildSections(teamId?: string | null, isIOmember?: boolean) {
   return [
     {
       label: "Performance",
@@ -38,6 +39,16 @@ function buildSections(teamId?: string | null) {
         ...(teamId ? [{ href: "/dashboard/team", label: "Team", icon: Users }] : []),
       ],
     },
+    ...(isIOmember ? [{
+      label: "IO Community",
+      items: [
+        { href: "/dashboard/io",             label: "IO Dashboard", icon: Zap    },
+        { href: "/dashboard/io/checkin",     label: "Check-in",     icon: Target },
+        { href: "/dashboard/io/training",    label: "Training",     icon: Award  },
+        { href: "/dashboard/io/leaderboard", label: "IO Board",     icon: Trophy },
+        { href: "/dashboard/io/body",        label: "Body",         icon: Users  },
+      ],
+    }] : []),
     {
       label: "Account",
       items: [
@@ -47,15 +58,17 @@ function buildSections(teamId?: string | null) {
   ];
 }
 
-export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId }: SidebarProps) {
-  const sections = buildSections(teamId);
+export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId, isIOmember }: SidebarProps) {
+  const sections = buildSections(teamId, isIOmember);
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
   useEffect(() => { setOpen(false); }, [pathname]);
 
   function isActive(href: string) {
-    return pathname === href;
+    if (href === "/dashboard") return pathname === href;
+    if (href === "/dashboard/io") return pathname === href;
+    return pathname === href || pathname.startsWith(href + "/");
   }
 
   function UserInfo() {

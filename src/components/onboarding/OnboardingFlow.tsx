@@ -11,8 +11,10 @@ import {
   saveOnboardingProfile,
   saveOnboardingGoals,
   saveOwnerVerificationRequest,
+  saveTrackingPreference,
   completeOnboarding,
 } from "@/app/onboarding/actions";
+import { Activity, CalendarDays } from "lucide-react";
 
 const ROLES = [
   { value: "closer",   label: "Closer"             },
@@ -208,7 +210,107 @@ function StepProfile({ onNext }: { onNext: () => void }) {
   );
 }
 
-// ── Rep: Step 2 — Goals ───────────────────────────────────────
+// ── Rep: Step 2 — Tracking Preference ────────────────────────
+
+function StepTracking({ onNext }: { onNext: () => void }) {
+  const [state, formAction, isPending] = useActionState(saveTrackingPreference, null);
+  const [selected, setSelected] = useState<"daily" | "weekly">("daily");
+
+  if (state && !state.error) {
+    onNext();
+    return null;
+  }
+
+  return (
+    <div className="animate-in">
+      <h2 className="text-2xl font-black text-white mb-1.5 tracking-tight">How do you want to track?</h2>
+      <p className="text-sm text-[#6b7280] mb-7">
+        Choose how you&apos;ll check in on your performance. You can change this later from your profile.
+      </p>
+
+      <div className="grid grid-cols-1 gap-3 mb-7">
+        <button
+          type="button"
+          onClick={() => setSelected("daily")}
+          className={cn(
+            "flex items-start gap-4 p-4 rounded-xl border transition-all duration-150 text-left",
+            selected === "daily"
+              ? "bg-violet-500/10 border-violet-500/40 ring-1 ring-violet-500/30"
+              : "bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:border-white/[0.14]"
+          )}
+        >
+          <div className={cn(
+            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5 transition-colors",
+            selected === "daily" ? "bg-violet-500/20 border border-violet-500/30" : "bg-white/[0.06] border border-white/[0.08]"
+          )}>
+            <Activity className={cn("w-5 h-5", selected === "daily" ? "text-violet-400" : "text-[#6b7280]")} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className={cn("font-bold text-sm mb-0.5", selected === "daily" ? "text-white" : "text-[#d1d5db]")}>
+              Daily Tracker
+            </p>
+            <p className="text-xs text-[#6b7280] leading-relaxed">
+              Check in every day. Track daily scores and build a streak. Best for people who want constant feedback.
+            </p>
+          </div>
+          <div className={cn(
+            "w-4 h-4 rounded-full border-2 shrink-0 mt-1 transition-colors",
+            selected === "daily" ? "border-violet-500 bg-violet-500" : "border-[#374151]"
+          )} />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSelected("weekly")}
+          className={cn(
+            "flex items-start gap-4 p-4 rounded-xl border transition-all duration-150 text-left",
+            selected === "weekly"
+              ? "bg-indigo-500/10 border-indigo-500/40 ring-1 ring-indigo-500/30"
+              : "bg-white/[0.03] border-white/[0.08] hover:bg-white/[0.06] hover:border-white/[0.14]"
+          )}
+        >
+          <div className={cn(
+            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5 transition-colors",
+            selected === "weekly" ? "bg-indigo-500/20 border border-indigo-500/30" : "bg-white/[0.06] border border-white/[0.08]"
+          )}>
+            <CalendarDays className={cn("w-5 h-5", selected === "weekly" ? "text-indigo-400" : "text-[#6b7280]")} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className={cn("font-bold text-sm mb-0.5", selected === "weekly" ? "text-white" : "text-[#d1d5db]")}>
+              Weekly Tracker
+            </p>
+            <p className="text-xs text-[#6b7280] leading-relaxed">
+              One check-in per week. Reflect on the full week. Best for people who prefer a weekly review rhythm.
+            </p>
+          </div>
+          <div className={cn(
+            "w-4 h-4 rounded-full border-2 shrink-0 mt-1 transition-colors",
+            selected === "weekly" ? "border-indigo-500 bg-indigo-500" : "border-[#374151]"
+          )} />
+        </button>
+      </div>
+
+      <form action={formAction}>
+        <input type="hidden" name="tracking_preference" value={selected} />
+        {state?.error && (
+          <div className="flex items-center gap-2 bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3 mb-4">
+            <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <p className="text-sm text-rose-400">{state.error}</p>
+          </div>
+        )}
+        <button
+          type="submit"
+          disabled={isPending}
+          className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-semibold py-3.5 rounded-xl transition-colors"
+        >
+          {isPending ? "Saving…" : <>Continue <ChevronRight className="w-4 h-4" /></>}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// ── Rep: Step 3 — Goals ───────────────────────────────────────
 
 function StepGoals({ onNext }: { onNext: () => void }) {
   const [state, formAction, isPending] = useActionState(saveOnboardingGoals, null);
@@ -397,7 +499,7 @@ export default function OnboardingFlow() {
   const [step, setStep]               = useState(0);
   const [accountType, setAccountType] = useState<AccountType | null>(null);
 
-  const repStepCount   = 4; // Welcome, Profile, Goals, Done
+  const repStepCount   = 5; // Welcome, Profile, Tracking, Goals, Done
   const ownerStepCount = 3; // Welcome, Details, Pending
   const totalSteps     = accountType === "owner" ? ownerStepCount : repStepCount;
 
@@ -420,9 +522,10 @@ export default function OnboardingFlow() {
         )}
 
         {/* Sales Rep path */}
-        {accountType === "rep" && step === 1 && <StepProfile onNext={() => setStep(2)} />}
-        {accountType === "rep" && step === 2 && <StepGoals   onNext={() => setStep(3)} />}
-        {accountType === "rep" && step === 3 && <StepDone />}
+        {accountType === "rep" && step === 1 && <StepProfile  onNext={() => setStep(2)} />}
+        {accountType === "rep" && step === 2 && <StepTracking onNext={() => setStep(3)} />}
+        {accountType === "rep" && step === 3 && <StepGoals    onNext={() => setStep(4)} />}
+        {accountType === "rep" && step === 4 && <StepDone />}
 
         {/* Offer Owner path */}
         {accountType === "owner" && step === 1 && <StepOwnerProfile onNext={() => setStep(2)} />}

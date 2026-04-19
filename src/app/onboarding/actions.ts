@@ -52,6 +52,26 @@ export async function saveOnboardingProfile(
   return {};
 }
 
+export async function saveTrackingPreference(
+  _prev: { error?: string } | null,
+  formData: FormData
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated." };
+
+  const pref = formData.get("tracking_preference") as string;
+  if (!["daily", "weekly"].includes(pref)) return { error: "Invalid preference." };
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ tracking_preference: pref })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+  return {};
+}
+
 export async function saveOnboardingGoals(
   _prev: { error?: string } | null,
   formData: FormData
