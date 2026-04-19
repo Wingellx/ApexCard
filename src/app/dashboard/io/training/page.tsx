@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getTrainingSplit, getGymStreak, getRecentCheckins } from "@/lib/io-queries";
 import { DAY_LABELS, DAY_FULL, todayDayOfWeek } from "@/lib/io-score";
 import TrainingSplitEditor from "./TrainingSplitEditor";
-import { Flame, Dumbbell } from "lucide-react";
+import { Flame, Dumbbell, Lock } from "lucide-react";
 
 // Get the dates for the current Mon–Sun week
 function getWeekDates(): string[] {
@@ -29,11 +29,14 @@ export default async function TrainingPage() {
   const weekDates = getWeekDates();
   const todayDOW  = todayDayOfWeek(); // 1=Mon…7=Sun
 
-  const [split, gymStreak, recentCheckins] = await Promise.all([
+  const [trainingSplitResult, gymStreak, recentCheckins] = await Promise.all([
     getTrainingSplit(user.id),
     getGymStreak(user.id),
     getRecentCheckins(user.id, 14),
   ]);
+
+  const { split, isAdminAssigned } = trainingSplitResult;
+  const hasSplit = Object.keys(split).length > 0;
 
   // Map date → workout_completed
   const completedDates = new Set(
@@ -103,12 +106,31 @@ export default async function TrainingPage() {
         })}
       </div>
 
-      {/* Split editor */}
-      <div className="bg-[#111318] border border-[#1e2130] rounded-2xl p-6">
-        <p className="text-sm font-semibold text-[#f0f2f8] mb-1">Edit your split</p>
-        <p className="text-xs text-[#6b7280] mb-5">Set session names for each day. Use &ldquo;Rest&rdquo; for off days.</p>
-        <TrainingSplitEditor split={split} dayLabels={DAY_FULL} />
-      </div>
+      {/* Split editor or read-only notice */}
+      {isAdminAssigned ? (
+        <div className="bg-[#111318] border border-violet-500/20 rounded-2xl p-6 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
+            <Lock className="w-5 h-5 text-violet-400" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-[#f0f2f8]">Coach-assigned split</p>
+            <p className="text-xs text-[#6b7280] mt-0.5">Your admin set this split. Contact them to request changes.</p>
+          </div>
+        </div>
+      ) : !hasSplit ? (
+        <div className="bg-[#111318] border border-dashed border-[#1e2130] rounded-2xl p-8 text-center">
+          <p className="font-semibold text-[#f0f2f8] mb-1">No split assigned yet</p>
+          <p className="text-sm text-[#6b7280]">Your coach hasn&apos;t set your split yet. Set one yourself below.</p>
+        </div>
+      ) : null}
+
+      {!isAdminAssigned && (
+        <div className="bg-[#111318] border border-[#1e2130] rounded-2xl p-6">
+          <p className="text-sm font-semibold text-[#f0f2f8] mb-1">Edit your split</p>
+          <p className="text-xs text-[#6b7280] mb-5">Set session names for each day. Use &ldquo;Rest&rdquo; for off days.</p>
+          <TrainingSplitEditor split={split} dayLabels={DAY_FULL} />
+        </div>
+      )}
     </div>
   );
 }

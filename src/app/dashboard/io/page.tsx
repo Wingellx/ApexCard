@@ -102,7 +102,7 @@ export default async function IODashboardPage() {
 
   const [
     checkin, gymStreak, salesStreak, averages, memberCount,
-    split, recentCheckins, bodyMetrics,
+    trainingSplitResult, recentCheckins, bodyMetrics,
   ] = await Promise.all([
     getTodayCheckin(user.id, dateKey),
     getGymStreak(user.id),
@@ -113,6 +113,8 @@ export default async function IODashboardPage() {
     getRecentCheckins(user.id, 14),
     getBodyMetrics(user.id, 30),
   ]);
+
+  const split = trainingSplitResult.split;
 
   const completedDates = new Set(
     recentCheckins.filter(c => c.workout_completed).map(c => c.checkin_date)

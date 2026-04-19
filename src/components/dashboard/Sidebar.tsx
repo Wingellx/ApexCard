@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, PhoneCall, Target, History, Award,
-  Settings, LogOut, Menu, X, Trophy, User, Flame, Users, Zap,
+  Settings, LogOut, Menu, X, Trophy, User, Flame, Users, Zap, Shield, Dumbbell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signout } from "@/app/auth/actions";
@@ -18,9 +18,10 @@ interface SidebarProps {
   streak: number;
   teamId?: string | null;
   isIOmember?: boolean;
+  isTeamAdmin?: boolean;
 }
 
-function buildSections(teamId?: string | null, isIOmember?: boolean) {
+function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin?: boolean) {
   return [
     {
       label: "Performance",
@@ -36,7 +37,11 @@ function buildSections(teamId?: string | null, isIOmember?: boolean) {
       label: "Discover",
       items: [
         { href: "/leaderboard",       label: "Leaderboard", icon: Trophy          },
-        ...(teamId ? [{ href: "/dashboard/team", label: isIOmember ? "Brotherhood ⚔️" : "Team", icon: Users }] : []),
+        ...(teamId ? [
+          { href: "/dashboard/team",          label: isIOmember ? "Brotherhood ⚔️" : "Team",     icon: Users    },
+          { href: "/dashboard/team/training", label: "Training",                                  icon: Dumbbell },
+          ...(isTeamAdmin ? [{ href: "/dashboard/team/admin", label: "Admin", icon: Shield }] : []),
+        ] : []),
       ],
     },
     ...(isIOmember ? [{
@@ -58,8 +63,8 @@ function buildSections(teamId?: string | null, isIOmember?: boolean) {
   ];
 }
 
-export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId, isIOmember }: SidebarProps) {
-  const sections = buildSections(teamId, isIOmember);
+export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId, isIOmember, isTeamAdmin }: SidebarProps) {
+  const sections = buildSections(teamId, isIOmember, isTeamAdmin);
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 

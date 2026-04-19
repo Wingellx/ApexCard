@@ -79,10 +79,16 @@ export async function joinTeam(
     return { error: "You're already a member of another team. Leave your current team first." };
   }
 
+  // First member to join a team becomes the admin
+  const { data: existingTeamMembers } = await admin
+    .from("team_members")
+    .select("team_id");
+  const isFirstMember = (existingTeamMembers ?? []).filter(r => r.team_id === matchedTeam.id).length === 0;
+
   // Insert the membership row
   const { error: insertError } = await admin
     .from("team_members")
-    .insert({ team_id: matchedTeam.id, user_id: user.id });
+    .insert({ team_id: matchedTeam.id, user_id: user.id, role: isFirstMember ? "admin" : "member" });
 
   if (insertError) {
     console.error("[joinTeam] insert error:", insertError.code, insertError.message, insertError.details);

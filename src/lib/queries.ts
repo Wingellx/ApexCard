@@ -510,6 +510,79 @@ export async function getTeamLeaderboard(
     .sort((a, b) => b.totalCash - a.totalCash);
 }
 
+// ── Team admin ───────────────────────────────────────────────
+
+export async function getUserTeamRole(userId: string): Promise<"admin" | "member" | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("team_members")
+    .select("user_id, role");
+  const row = (data ?? []).find((r: { user_id: string; role: string }) => r.user_id === userId);
+  if (!row) return null;
+  return (row.role as "admin" | "member") ?? "member";
+}
+
+export interface AdminMemberRow {
+  userId: string;
+  name: string;
+  username: string | null;
+  salesRole: string | null;
+  memberRole: "admin" | "member";
+  recentCheckins: number;
+  recentCalls: number;
+  split: Record<number, string>;
+}
+
+export async function getAdminTeamData(teamId: string): Promise<AdminMemberRow[]> {
+  const admin = createAdminClient();
+
+  const { data: allMembers } = await admin
+    .from("team_members")
+    .select("user_id, team_id, role, profiles(full_name, email, username, role)");
+
+  const members = (allMembers ?? []).filter((m: { team_id: string }) => m.team_id === teamId);
+  if (!members.length) return [];
+
+  const userIds = members.map((m: { user_id: string }) => m.user_id as string);
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const since = sevenDaysAgo.toISOString().split("T")[0];
+
+  const [{ data: checkins }, { data: callLogs }, { data: splits }] = await Promise.all([
+    admin.from("daily_checkins").select("user_id").in("user_id", userIds).gte("checkin_date", since),
+    admin.from("call_logs").select("user_id").in("user_id", userIds).gte("date", since),
+    admin.from("training_splits").select("user_id, day_of_week, session_name").in("user_id", userIds),
+  ]);
+
+  const checkinCount = new Map<string, number>();
+  const callCount    = new Map<string, number>();
+  const splitMap     = new Map<string, Record<number, string>>();
+  for (const uid of userIds) { checkinCount.set(uid, 0); callCount.set(uid, 0); splitMap.set(uid, {}); }
+  for (const c of checkins ?? []) checkinCount.set(c.user_id, (checkinCount.get(c.user_id) ?? 0) + 1);
+  for (const c of callLogs  ?? []) callCount.set(c.user_id,   (callCount.get(c.user_id)   ?? 0) + 1);
+  for (const s of splits    ?? []) {
+    const m = splitMap.get(s.user_id) ?? {};
+    m[s.day_of_week] = s.session_name;
+    splitMap.set(s.user_id, m);
+  }
+
+  return members.map((m: { user_id: string; team_id: string; role: string; profiles: unknown }) => {
+    const uid = m.user_id as string;
+    type P = { full_name?: string | null; email?: string | null; username?: string | null; role?: string | null };
+    const p = m.profiles as P | null;
+    return {
+      userId:         uid,
+      name:           p?.full_name?.trim() || p?.email?.split("@")[0] || "Member",
+      username:       p?.username ?? null,
+      salesRole:      p?.role ?? null,
+      memberRole:     (m.role as "admin" | "member") ?? "member",
+      recentCheckins: checkinCount.get(uid) ?? 0,
+      recentCalls:    callCount.get(uid) ?? 0,
+      split:          splitMap.get(uid) ?? {},
+    };
+  });
+}
+
 // ── Owner portal ─────────────────────────────────────────────
 
 export type DiscoverableRep = {

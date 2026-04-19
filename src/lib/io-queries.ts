@@ -76,17 +76,24 @@ export async function getGymStreak(userId: string): Promise<number> {
 
 // ── Training split ────────────────────────────────────────────────────────────
 
-export async function getTrainingSplit(userId: string) {
+export async function getTrainingSplit(userId: string): Promise<{
+  split: Record<number, string>;
+  isAdminAssigned: boolean;
+}> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("training_splits")
-    .select("day_of_week, session_name")
+    .select("day_of_week, session_name, assigned_by")
     .eq("user_id", userId)
     .order("day_of_week");
-  // Return as map: day_of_week → session_name
-  const map: Record<number, string> = {};
-  (data ?? []).forEach(r => { map[r.day_of_week] = r.session_name; });
-  return map;
+
+  const split: Record<number, string> = {};
+  let isAdminAssigned = false;
+  (data ?? []).forEach(r => {
+    split[r.day_of_week] = r.session_name;
+    if (r.assigned_by && r.assigned_by !== userId) isAdminAssigned = true;
+  });
+  return { split, isAdminAssigned };
 }
 
 // ── Body metrics ──────────────────────────────────────────────────────────────
