@@ -22,12 +22,30 @@ function StatRow({ label, value, sub }: { label: string; value: string; sub?: st
 }
 
 export default async function StatsPage() {
+  try {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const [logs, profile] = await Promise.all([
-    user ? getAllCallLogs(user.id) : Promise.resolve([]),
-    user ? getProfileFull(user.id) : Promise.resolve(null),
-  ]);
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError) console.error("[stats] auth error:", authError);
+
+  let logs: Awaited<ReturnType<typeof getAllCallLogs>> = [];
+  let profile: Awaited<ReturnType<typeof getProfileFull>> = null;
+
+  if (user) {
+    const [logsResult, profileResult] = await Promise.allSettled([
+      getAllCallLogs(user.id),
+      getProfileFull(user.id),
+    ]);
+    if (logsResult.status === "fulfilled") {
+      logs = logsResult.value;
+    } else {
+      console.error("[stats] getAllCallLogs error:", logsResult.reason);
+    }
+    if (profileResult.status === "fulfilled") {
+      profile = profileResult.value;
+    } else {
+      console.error("[stats] getProfileFull error:", profileResult.reason);
+    }
+  }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const publicUrl = profile?.username
@@ -36,14 +54,15 @@ export default async function StatsPage() {
 
   // Fetch verification status (admin client — avoids RLS on verify_token columns)
   const admin = createAdminClient();
-  const { data: verifyReq } = user
+  const { data: verifyReq, error: verifyError } = user
     ? await admin
         .from("verification_requests")
         .select("manager_name, manager_company, manager_email, status, created_at, verified_at")
         .eq("user_id", user.id)
         .in("status", ["pending", "verified"])
         .maybeSingle()
-    : { data: null };
+    : { data: null, error: null };
+  if (verifyError) console.error("[stats] verification_requests error:", verifyError);
 
   const verificationStatus = (verifyReq?.status ?? "none") as "none" | "pending" | "verified" | "rejected";
 
@@ -220,4 +239,8 @@ export default async function StatsPage() {
       </div>
     </div>
   );
+  } catch (err) {
+    console.error("[stats] unhandled render error:", err);
+    throw err;
+  }
 }

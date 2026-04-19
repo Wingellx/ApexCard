@@ -159,11 +159,12 @@ export async function getLast30DaysLogs(userId: string) {
 
 export async function getAllCallLogs(userId: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("call_logs")
     .select("id, date, calls_taken, shows, offers_made, offers_taken, cash_collected, commission_earned, notes")
     .eq("user_id", userId)
     .order("date", { ascending: false });
+  if (error) console.error("[getAllCallLogs] Supabase error:", error.message, error.details, error.hint);
   return data ?? [];
 }
 
@@ -218,11 +219,12 @@ export async function getProfile(userId: string) {
 
 export async function getProfileFull(userId: string) {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
     .select("full_name, email, username, role, bio, leaderboard_opt_in")
     .eq("id", userId)
     .maybeSingle();
+  if (error) console.error("[getProfileFull] Supabase error:", error.message, error.details, error.hint);
   return data;
 }
 
