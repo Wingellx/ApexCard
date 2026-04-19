@@ -88,7 +88,7 @@ export default async function WaitlistPage() {
           <div className="flex items-center gap-4">
             <Link href="/privacy" className="hover:text-[#6b7280] transition-colors">Privacy Policy</Link>
             <Link href="/terms"   className="hover:text-[#6b7280] transition-colors">Terms of Service</Link>
-            <a href="#contact"    className="hover:text-[#6b7280] transition-colors">Contact</a>
+            <Link href="/auth/login" className="hover:text-[#6b7280] transition-colors">Early access</Link>
           </div>
         </div>
       </footer>
