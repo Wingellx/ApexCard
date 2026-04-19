@@ -395,7 +395,7 @@ export async function getUserTeam(userId: string): Promise<UserTeam | null> {
   if (!data) return null;
   return {
     teamId: data.team_id as string,
-    team: data.teams as UserTeam["team"],
+    team: data.teams as unknown as UserTeam["team"],
   };
 }
 
@@ -575,7 +575,7 @@ export async function getPendingOwnerRequests() {
     .from("owner_verification_requests")
     .select("id, user_id, full_name, company_name, company_website, offer_description, status, created_at, profiles(email)")
     .order("created_at", { ascending: true });
-  return (data ?? []) as Array<{
+  return (data ?? []) as unknown as Array<{
     id: string;
     user_id: string;
     full_name: string;
