@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, PhoneCall, Target, History, Award,
-  Settings, LogOut, Menu, X, Trophy, User, Flame, Users, Zap, Shield, Dumbbell,
+  Settings, LogOut, Menu, X, Trophy, User, Flame, Users, Zap, Shield, Dumbbell, BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signout } from "@/app/auth/actions";
@@ -36,7 +36,8 @@ function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin
     {
       label: "Discover",
       items: [
-        { href: "/leaderboard",       label: "Leaderboard", icon: Trophy          },
+        { href: "/leaderboard",             label: "Leaderboard", icon: Trophy  },
+        { href: "/leaderboard/communities", label: "Rankings",    icon: BarChart3 },
         ...(teamId ? [
           { href: "/dashboard/team",          label: isIOmember ? "Brotherhood ⚔️" : "Team",     icon: Users    },
           { href: "/dashboard/team/training", label: "Training",                                  icon: Dumbbell },

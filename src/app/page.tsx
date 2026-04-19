@@ -18,12 +18,20 @@ export default async function WaitlistPage() {
             <img src="/logo.svg" alt="ApexCard" className="w-7 h-7" />
             <span className="font-bold text-base tracking-tight text-[#f0f2f8]">ApexCard</span>
           </div>
-          <Link
-            href="/auth/login"
-            className="text-xs font-semibold text-[#6b7280] hover:text-[#f0f2f8] transition-colors"
-          >
-            Sign in →
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/leaderboard/communities"
+              className="text-xs font-semibold text-[#6b7280] hover:text-[#f0f2f8] transition-colors"
+            >
+              Rankings
+            </Link>
+            <Link
+              href="/auth/login"
+              className="text-xs font-semibold text-[#6b7280] hover:text-[#f0f2f8] transition-colors"
+            >
+              Sign in →
+            </Link>
+          </div>
         </div>
       </nav>
 
