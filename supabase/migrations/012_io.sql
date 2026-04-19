@@ -9,7 +9,7 @@ values (
   '00000000-0000-0000-0000-000000000010',
   'Improvement Only',
   'The IO community — daily accountability, fitness, and high performance.',
-  'IO-2025'
+  'IO-2026'
 ) on conflict (id) do nothing;
 
 -- daily_checkins — stores both daily and weekly check-ins

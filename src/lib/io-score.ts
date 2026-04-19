@@ -1,5 +1,5 @@
 export const IO_TEAM_ID = "00000000-0000-0000-0000-000000000010";
-export const IO_INVITE_CODE = "IO-2025";
+export const IO_INVITE_CODE = "IO-2026";
 
 // Baseline work units for full work score (35 pts)
 const DAILY_BASELINE = 15;   // calls per day
