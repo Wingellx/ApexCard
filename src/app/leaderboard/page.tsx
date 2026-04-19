@@ -279,19 +279,45 @@ export default async function LeaderboardPage({
             className="animate-in bg-[#0f1117] ring-1 ring-white/[0.05] rounded-2xl px-6 py-16 text-center"
             style={{ animationDelay: "160ms" }}
           >
-            <Trophy className="w-10 h-10 text-[#1e2130] mx-auto mb-4" />
-            <p className="text-sm font-semibold text-[#374151]">No one on the board yet</p>
-            <p className="text-[12px] text-[#1f2937] mt-1 leading-relaxed">
-              {verified
-                ? "No verified users match these filters."
-                : "Log calls and enable leaderboard in your profile to appear here."}
-            </p>
-            <Link
-              href="/auth/login"
-              className="inline-flex items-center gap-2 mt-6 text-[12px] font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
-            >
-              Get your ApexCard →
-            </Link>
+            {verified ? (
+              <>
+                <ShieldCheck className="w-10 h-10 text-[#1e2130] mx-auto mb-4" />
+                <p className="text-base font-bold text-[#d1d5db] mb-2">No verified reps match these filters</p>
+                <p className="text-sm text-[#6b7280] leading-relaxed max-w-sm mx-auto">
+                  Try removing the &ldquo;Verified only&rdquo; filter, or check back after more reps get verified.
+                </p>
+                <Link
+                  href={buildUrl(filters, { verified: "0" })}
+                  className="inline-flex items-center gap-2 mt-6 bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.08] text-sm font-semibold text-[#d1d5db] px-5 py-2.5 rounded-xl transition-colors"
+                >
+                  Show all reps
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                  <Trophy className="w-8 h-8 text-amber-400" />
+                </div>
+                <p className="text-lg font-extrabold text-[#f0f2f8] tracking-tight mb-2">Be the first on the leaderboard</p>
+                <p className="text-sm text-[#6b7280] leading-relaxed max-w-sm mx-auto mb-6">
+                  No one has opted in yet. Enable leaderboard visibility in your profile settings and your stats will appear here.
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <Link
+                    href="/dashboard/profile"
+                    className="inline-flex items-center gap-2 bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors shadow-lg shadow-indigo-500/20"
+                  >
+                    Enable in profile settings
+                  </Link>
+                  <Link
+                    href="/auth/login"
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-[#4b5563] hover:text-[#9ca3af] transition-colors"
+                  >
+                    Get your ApexCard →
+                  </Link>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-2">

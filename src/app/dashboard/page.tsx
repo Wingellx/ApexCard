@@ -206,11 +206,14 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Weekly + Monthly summary */}
+      {/* Performance section */}
       {hasData && (
-        <div className="animate-in grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6" style={{ animationDelay: "560ms" }}>
-          <WeeklySummary thisWeekLogs={thisWeekLogs as Parameters<typeof WeeklySummary>[0]["thisWeekLogs"]} lastWeekLogs={lastWeekLogs as Parameters<typeof WeeklySummary>[0]["lastWeekLogs"]} />
-          <MonthlySummaryCard thisMonthLogs={rows as Parameters<typeof MonthlySummaryCard>[0]["thisMonthLogs"]} lastMonthLogs={lastMonthLogs as Parameters<typeof MonthlySummaryCard>[0]["lastMonthLogs"]} goals={goals} monthLabel={monthLabel()} />
+        <div className="animate-in mb-6" style={{ animationDelay: "560ms" }}>
+          <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest mb-3">Performance</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <WeeklySummary thisWeekLogs={thisWeekLogs as Parameters<typeof WeeklySummary>[0]["thisWeekLogs"]} lastWeekLogs={lastWeekLogs as Parameters<typeof WeeklySummary>[0]["lastWeekLogs"]} />
+            <MonthlySummaryCard thisMonthLogs={rows as Parameters<typeof MonthlySummaryCard>[0]["thisMonthLogs"]} lastMonthLogs={lastMonthLogs as Parameters<typeof MonthlySummaryCard>[0]["lastMonthLogs"]} goals={goals} monthLabel={monthLabel()} />
+          </div>
         </div>
       )}
 

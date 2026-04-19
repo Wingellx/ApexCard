@@ -27,11 +27,12 @@ export default function Footer() {
           <div>
             <p className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider mb-4">Legal</p>
             <ul className="space-y-2.5">
-              {["Privacy Policy", "Terms of Service"].map((item) => (
-                <li key={item}>
-                  <Link href="#" className="text-sm text-[#6b7280] hover:text-[#f0f2f8] transition-colors">{item}</Link>
-                </li>
-              ))}
+              <li>
+                <Link href="/privacy" className="text-sm text-[#6b7280] hover:text-[#f0f2f8] transition-colors">Privacy Policy</Link>
+              </li>
+              <li>
+                <Link href="/terms" className="text-sm text-[#6b7280] hover:text-[#f0f2f8] transition-colors">Terms of Service</Link>
+              </li>
             </ul>
           </div>
         </div>
