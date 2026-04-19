@@ -7,10 +7,10 @@ import { Crown, Flame, TrendingUp, DollarSign, Zap, CalendarDays } from "lucide-
 type Tab = "weekly" | "monthly" | "cash" | "streak";
 
 const TABS: { key: Tab; label: string; icon: typeof Crown }[] = [
-  { key: "weekly",  label: "This Week",   icon: Zap         },
-  { key: "monthly", label: "This Month",  icon: TrendingUp  },
-  { key: "cash",    label: "Cash",        icon: DollarSign  },
-  { key: "streak",  label: "Gym Streak",  icon: Flame       },
+  { key: "weekly",  label: "This Week",  icon: Zap        },
+  { key: "monthly", label: "This Month", icon: TrendingUp },
+  { key: "streak",  label: "Streak",     icon: Flame      },
+  { key: "cash",    label: "Cash",       icon: DollarSign },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
@@ -21,6 +21,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 function fmt(n: number) {
+  if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`;
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 }
 
@@ -49,12 +50,14 @@ export default async function IOLeaderboardPage({
 
   const rows = await getIOLeaderboard(tab);
 
+  const tabLabel = TABS.find(t => t.key === tab)?.label ?? "This Week";
+
   return (
     <div className="px-4 sm:px-8 py-6 sm:py-8 max-w-[800px] space-y-5">
       <div>
         <h1 className="text-2xl font-extrabold text-[#f0f2f8] tracking-tight">Brotherhood Leaderboard ⚔️</h1>
         <p className="text-sm text-[#6b7280] mt-1">
-          {rows.length} brother{rows.length !== 1 ? "s" : ""} executing · Scores normalised across daily and weekly trackers.
+          {rows.length} brother{rows.length !== 1 ? "s" : ""} executing · Ranked by Execution Score
         </p>
       </div>
 
@@ -84,9 +87,10 @@ export default async function IOLeaderboardPage({
       ) : (
         <div className="space-y-2">
           {rows.map((row, i) => {
-            const rank    = i + 1;
-            const isMe    = row.userId === user.id;
-            const ini     = initials(row.fullName);
+            const rank  = i + 1;
+            const isMe  = row.userId === user.id;
+            const ini   = initials(row.fullName);
+            const color = scoreColor(row.score);
 
             return (
               <div
@@ -105,7 +109,8 @@ export default async function IOLeaderboardPage({
                 </div>
 
                 {/* Avatar */}
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-sm font-black text-white select-none"
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-sm font-black text-white select-none"
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}
                 >
                   {ini}
@@ -118,7 +123,7 @@ export default async function IOLeaderboardPage({
                     {isMe && <span className="text-[10px] font-bold text-white bg-white/10 border border-white/20 px-1.5 py-0.5 rounded-full">You</span>}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                    <span className="text-[10px] text-[#6b7280]">{ROLE_LABELS[row.role] ?? row.role}</span>
+                    <span className="text-[10px] font-semibold text-[#9ca3af]">{ROLE_LABELS[row.role] ?? row.role}</span>
                     <span className="text-[10px] text-[#374151]">·</span>
                     <div className="flex items-center gap-0.5">
                       {row.trackingPref === "daily"
@@ -126,43 +131,42 @@ export default async function IOLeaderboardPage({
                         : <CalendarDays className="w-2.5 h-2.5 text-white/40" />}
                       <span className="text-[10px] text-[#4b5563] capitalize">{row.trackingPref}</span>
                     </div>
+                    {row.cashCollected > 0 && (
+                      <>
+                        <span className="text-[10px] text-[#374151]">·</span>
+                        <span className="text-[10px] text-emerald-600">{fmt(row.cashCollected)}</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
-                {/* Primary metric */}
-                <div className="text-right shrink-0">
-                  {(tab === "weekly" || tab === "monthly") && (
-                    <>
-                      <p className={`text-xl font-extrabold tabular-nums ${row.score > 0 ? scoreColor(row.score) : "text-[#374151]"}`}>
-                        {row.score > 0 ? row.score : "—"}
-                        {row.score > 0 && <span className="text-xs text-[#6b7280] font-normal">/100</span>}
-                      </p>
-                      <p className="text-[10px] text-[#6b7280]">{row.score > 0 ? scoreLabel(row.score) : "No data"}</p>
-                    </>
-                  )}
-                  {tab === "cash" && (
-                    <>
-                      <p className="text-xl font-extrabold text-emerald-400 tabular-nums">
-                        {row.cashCollected > 0 ? fmt(row.cashCollected) : "—"}
-                      </p>
-                      <p className="text-[10px] text-[#6b7280]">collected</p>
-                    </>
-                  )}
-                  {tab === "streak" && (
-                    <>
-                      <div className="flex items-center gap-1 justify-end">
-                        <Flame className="w-4 h-4 text-orange-400" />
-                        <p className="text-xl font-extrabold text-orange-400 tabular-nums">{row.gymStreak}</p>
-                      </div>
-                      <p className="text-[10px] text-[#6b7280]">day streak</p>
-                    </>
-                  )}
+                {/* Primary metric — always Execution Score + streak */}
+                <div className="text-right shrink-0 space-y-1">
+                  <div>
+                    <span className={`text-xl font-extrabold tabular-nums ${row.score > 0 ? color : "text-[#374151]"}`}>
+                      {row.score}
+                    </span>
+                    <span className="text-xs text-[#6b7280] font-normal">/100</span>
+                  </div>
+                  <div className="flex items-center gap-1 justify-end">
+                    <Flame className={`w-3 h-3 ${row.gymStreak > 0 ? "text-orange-400" : "text-[#374151]"}`} />
+                    <span className={`text-xs font-semibold tabular-nums ${row.gymStreak > 0 ? "text-orange-400" : "text-[#374151]"}`}>
+                      {row.gymStreak}d
+                    </span>
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+
+      <p className="text-[10px] text-[#374151] text-center">
+        {tab === "weekly" && "Ranked by avg execution score · last 7 days"}
+        {tab === "monthly" && "Ranked by avg execution score · last 30 days"}
+        {tab === "streak" && "Ranked by consecutive gym days"}
+        {tab === "cash" && "Ranked by total cash collected"}
+      </p>
     </div>
   );
 }
