@@ -3,6 +3,7 @@
 import { useActionState, useState, useEffect } from "react";
 import { saveProfile } from "@/app/dashboard/profile/actions";
 import Button from "@/components/ui/Button";
+import { useToast } from "@/components/ui/ToastProvider";
 import { CheckCircle2, XCircle, Link2, Copy, Check, Trophy, Search, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -36,10 +37,12 @@ function isValidUsername(s: string) {
 
 export default function ProfileForm({ profile, appUrl, onSaved }: Props) {
   const [state, formAction, isPending] = useActionState(saveProfile, null);
+  const { success, error } = useToast();
 
   useEffect(() => {
-    if (state?.success) onSaved?.();
-  }, [state?.success]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (state?.success) { success("Profile saved."); onSaved?.(); }
+    if (state?.error)   error(state.error);
+  }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [fullName,      setFullName]      = useState(profile?.full_name      ?? "");
   const [username,      setUsername]      = useState(profile?.username       ?? "");

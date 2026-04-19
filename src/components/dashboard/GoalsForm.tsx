@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useEffect } from "react";
 import { upsertGoals } from "@/app/dashboard/goals/actions";
 import Button from "@/components/ui/Button";
+import { useToast } from "@/components/ui/ToastProvider";
 import {
   PhoneCall, TrendingUp, Target, Handshake, DollarSign, Wallet, CheckCircle2,
 } from "lucide-react";
@@ -117,7 +118,13 @@ function SummaryRow({ label, value, color }: { label: string; value: string; col
 
 export default function GoalsForm({ initialMonth, existing }: GoalsFormProps) {
   const [state, formAction, isPending] = useActionState(upsertGoals, null);
+  const { success, error } = useToast();
   const [month, setMonth] = useState(initialMonth);
+
+  useEffect(() => {
+    if (state?.success) success(`Goals saved for ${monthLabel(month)}.`);
+    if (state?.error)   error(state.error);
+  }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [calls, setCalls]         = useState(String(existing?.calls_target ?? ""));
   const [showRate, setShowRate]   = useState(String(existing?.show_rate_target ?? ""));

@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export async function submitCallLog(
-  _prev: { error: string } | null,
+  _prev: { error?: string; success?: boolean } | null,
   formData: FormData
-): Promise<{ error: string } | null> {
+): Promise<{ error?: string; success?: boolean } | null> {
   const supabase = await createClient();
 
   const {
@@ -51,5 +51,5 @@ export async function submitCallLog(
   if (error) return { error: error.message };
 
   revalidatePath("/dashboard");
-  redirect("/dashboard");
+  return { success: true };
 }

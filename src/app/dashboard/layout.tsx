@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileFull, getLoggedDates, calculateStreak, getUserTeam } from "@/lib/queries";
@@ -23,6 +24,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (profile && !profile.onboarding_completed) redirect("/onboarding");
   if (profile?.account_type === "owner") redirect("/dashboard/owner");
 
+  const subStatus   = profile?.subscription_status ?? "trialing";
+  const trialEndsAt = profile?.trial_ends_at;
+  const trialExpired = trialEndsAt ? new Date(trialEndsAt) < new Date() : false;
+  const showUpgradeBanner =
+    subStatus === "canceled" || subStatus === "unpaid" ||
+    (subStatus === "trialing" && trialExpired);
+
   const streak      = calculateStreak(allDates);
   const rawName     = profile?.full_name?.trim() || profile?.email?.split("@")[0] || user?.email?.split("@")[0] || "User";
   const userName    = rawName;
@@ -41,6 +49,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
         teamId={userTeam?.teamId ?? null}
       />
       <div className="lg:ml-64 pt-14 lg:pt-0">
+        {showUpgradeBanner && (
+          <div className="bg-rose-500/10 border-b border-rose-500/20 px-6 py-3 flex items-center justify-between gap-4">
+            <p className="text-sm text-rose-300 font-medium">
+              {subStatus === "trialing" ? "Your 14-day free trial has expired." : "Your subscription requires attention."}
+            </p>
+            <Link
+              href="/dashboard/upgrade"
+              className="shrink-0 text-xs font-semibold bg-rose-500 hover:bg-rose-400 text-white px-4 py-1.5 rounded-lg transition-colors"
+            >
+              Upgrade now →
+            </Link>
+          </div>
+        )}
         {children}
       </div>
     </div>

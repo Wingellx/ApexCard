@@ -1,7 +1,9 @@
 "use client";
 
 import { useActionState, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { submitCallLog } from "@/app/dashboard/log/actions";
+import { useToast } from "@/components/ui/ToastProvider";
 import Button from "@/components/ui/Button";
 import {
   PhoneCall,
@@ -121,6 +123,13 @@ function StatPill({ label, value, color }: { label: string; value: string; color
 
 export default function LogCallsForm() {
   const [state, formAction, isPending] = useActionState(submitCallLog, null);
+  const { success, error } = useToast();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (state?.success) { success("Call log saved."); router.push("/dashboard"); }
+    if (state?.error)   error(state.error);
+  }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [date, setDate] = useState(today());
   const [callsTaken, setCallsTaken] = useState("");

@@ -225,7 +225,7 @@ export async function getProfileFull(userId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("full_name, email, username, role, bio, leaderboard_opt_in, onboarding_completed, account_type, verified_owner, discoverable, contact_enabled")
+    .select("full_name, email, username, role, bio, leaderboard_opt_in, onboarding_completed, account_type, verified_owner, discoverable, contact_enabled, subscription_status, trial_ends_at")
     .eq("id", userId)
     .maybeSingle();
   if (error) console.error("[getProfileFull] Supabase error:", error.message, error.details, error.hint);
