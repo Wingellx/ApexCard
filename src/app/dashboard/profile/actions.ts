@@ -14,7 +14,6 @@ export async function saveProfile(
   const full_name       = (formData.get("full_name")       as string).trim();
   const rawUsername     = (formData.get("username")         as string).trim().toLowerCase().replace(/\s+/g, "");
   const role            =  formData.get("role")             as string;
-  const commission_pct  = parseFloat(formData.get("commission_pct") as string) || 0;
   const bio             = (formData.get("bio")              as string).trim().slice(0, 160);
   const leaderboard_opt_in = formData.get("leaderboard_opt_in") === "on";
 
@@ -39,7 +38,6 @@ export async function saveProfile(
       full_name:            full_name || null,
       username:             rawUsername || null,
       role:                 validRoles.includes(role) ? role : "closer",
-      commission_pct:       Math.min(Math.max(commission_pct, 0), 100),
       bio,
       leaderboard_opt_in,
     })

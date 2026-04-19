@@ -11,7 +11,6 @@ interface Profile {
   email: string;
   username: string | null;
   role: string;
-  commission_pct: number;
   bio: string;
   leaderboard_opt_in: boolean;
 }
@@ -38,7 +37,6 @@ export default function ProfileForm({ profile, appUrl }: Props) {
   const [fullName,      setFullName]      = useState(profile?.full_name      ?? "");
   const [username,      setUsername]      = useState(profile?.username       ?? "");
   const [role,          setRole]          = useState(profile?.role           ?? "closer");
-  const [commissionPct, setCommissionPct] = useState(String(profile?.commission_pct ?? ""));
   const [bio,           setBio]           = useState(profile?.bio            ?? "");
   const [leaderboardOptIn, setLeaderboardOptIn] = useState(profile?.leaderboard_opt_in ?? false);
   const [copied,        setCopied]        = useState(false);
@@ -148,39 +146,18 @@ export default function ProfileForm({ profile, appUrl }: Props) {
       >
         <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest">Professional</p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className={labelClass}>Role</label>
-            <select
-              name="role"
-              value={role}
-              onChange={e => setRole(e.target.value)}
-              className={cn(inputClass, "cursor-pointer")}
-            >
-              {ROLES.map(r => (
-                <option key={r.value} value={r.value}>{r.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={labelClass}>Commission Rate</label>
-            <div className="relative">
-              <input
-                name="commission_pct"
-                type="number"
-                min="0"
-                max="100"
-                step="0.1"
-                value={commissionPct}
-                onChange={e => setCommissionPct(e.target.value)}
-                placeholder="10"
-                className={cn(inputClass, "pr-8")}
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[#6b7280] pointer-events-none">
-                %
-              </span>
-            </div>
-          </div>
+        <div>
+          <label className={labelClass}>Role</label>
+          <select
+            name="role"
+            value={role}
+            onChange={e => setRole(e.target.value)}
+            className={cn(inputClass, "cursor-pointer")}
+          >
+            {ROLES.map(r => (
+              <option key={r.value} value={r.value}>{r.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 

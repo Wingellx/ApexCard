@@ -220,7 +220,7 @@ export async function getProfileFull(userId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("full_name, email, username, role, commission_pct, bio, leaderboard_opt_in")
+    .select("full_name, email, username, role, bio, leaderboard_opt_in")
     .eq("id", userId)
     .maybeSingle();
   return data;
