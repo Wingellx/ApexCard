@@ -301,3 +301,105 @@ export async function getIndividualRankings(track: "sales" | "improvement"): Pro
     };
   });
 }
+
+// ── Tier movement (run at month-end) ─────────────────────────────────────────
+
+export interface TierMovementResult {
+  processed: number;
+  promoted:  { teamId: string; name: string; from: number; to: number }[];
+  demoted:   { teamId: string; name: string; from: number; to: number }[];
+  snapshot:  { teamId: string; name: string; tier: number; score: number; rank: number }[];
+}
+
+export async function processTierMovement(targetMonth?: string): Promise<TierMovementResult> {
+  const admin = createAdminClient();
+
+  // Default to last complete month
+  const now   = new Date();
+  const lm    = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+  const ly    = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+  const month = targetMonth ?? `${ly}-${String(lm + 1).padStart(2, "0")}-01`;
+
+  // Compute all communities' scores for that month
+  const allRows = await getCommunityRankings();  // uses current month — for manual trigger use last month
+
+  const promoted: TierMovementResult["promoted"] = [];
+  const demoted:  TierMovementResult["demoted"]  = [];
+  const snapshot: TierMovementResult["snapshot"] = [];
+
+  const tierUpdates = new Map<string, number>(); // teamId → new tier
+
+  // Process each division separately
+  const divisions: Division[] = ["sales", "improvement", "mixed"];
+  for (const division of divisions) {
+    const divTeams = allRows.filter(r => r.division === division);
+    if (!divTeams.length) continue;
+
+    // Group by current tier
+    for (const tier of [1, 2, 3]) {
+      const group = divTeams
+        .filter(r => r.tier === tier)
+        .sort((a, b) => b.score - a.score);
+
+      if (!group.length) continue;
+
+      // Add to snapshot
+      group.forEach((t, i) => {
+        snapshot.push({ teamId: t.teamId, name: t.name, tier, score: t.score, rank: i + 1 });
+      });
+
+      // Promote top 2 of tier 2 → tier 1, tier 3 → tier 2
+      if (tier > 1) {
+        const promotable = group.slice(0, Math.min(2, group.length));
+        for (const t of promotable) {
+          const newTier = tier - 1;
+          tierUpdates.set(t.teamId, newTier);
+          promoted.push({ teamId: t.teamId, name: t.name, from: tier, to: newTier });
+        }
+      }
+
+      // Demote bottom 2 of tier 1 → tier 2, tier 2 → tier 3
+      // Don't demote teams that were just promoted
+      if (tier < 3 && group.length > 2) {
+        const demotable = group
+          .slice(-2)
+          .filter(t => !tierUpdates.has(t.teamId)); // skip if already promoted
+        for (const t of demotable) {
+          const newTier = tier + 1;
+          tierUpdates.set(t.teamId, newTier);
+          demoted.push({ teamId: t.teamId, name: t.name, from: tier, to: newTier });
+        }
+      }
+    }
+  }
+
+  if (!allRows.length) return { processed: 0, promoted, demoted, snapshot };
+
+  // Write tier history snapshot
+  const historyRows = snapshot.map(s => ({
+    team_id:          s.teamId,
+    month,
+    tier:             s.tier,
+    score:            s.score,
+    rank_in_division: s.rank,
+  }));
+
+  await admin
+    .from("community_tier_history")
+    .upsert(historyRows, { onConflict: "team_id,month" });
+
+  // Apply tier updates
+  for (const [teamId, newTier] of tierUpdates) {
+    await admin
+      .from("teams")
+      .update({ tier: newTier })
+      .eq("id", teamId);
+  }
+
+  return {
+    processed: allRows.length,
+    promoted,
+    demoted,
+    snapshot,
+  };
+}

@@ -282,7 +282,7 @@ export default async function OwnerPortalPage({
 }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/auth/login");
 
   const profile = await getProfileFull(user.id);
 

@@ -24,5 +24,5 @@ export async function toggleShortlist(repId: string): Promise<void> {
     await admin.from("owner_shortlists").insert({ owner_id: user.id, rep_id: repId });
   }
 
-  revalidatePath("/dashboard/owner");
+  revalidatePath("/owner");
 }

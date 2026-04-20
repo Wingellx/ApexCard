@@ -25,7 +25,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   ]);
 
   if (profile && !profile.onboarding_completed) redirect("/onboarding");
-  if (profile?.account_type === "owner") redirect("/dashboard/owner");
+  if (profile?.account_type === "owner") redirect("/owner");
 
   const subStatus   = profile?.subscription_status ?? "trialing";
   const trialEndsAt = profile?.trial_ends_at;
