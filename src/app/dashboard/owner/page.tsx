@@ -11,9 +11,10 @@ import {
   type DiscoverableRep,
 } from "@/lib/queries";
 import ShortlistButton from "./ShortlistButton";
+import ProcessTiersButton from "./ProcessTiersButton";
 import {
   Clock, Search, ExternalLink, ShieldCheck, Mail,
-  Star, Users, Briefcase,
+  Star, Users, Briefcase, BarChart3,
 } from "lucide-react";
 
 const fmt    = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -227,6 +228,18 @@ function FullPortal({
             <div className="border-t border-white/[0.04] mt-8 mb-6" />
           </div>
         )}
+
+        {/* Admin tools */}
+        <div className="mb-10 bg-[#0f1117] border border-[#1e2130] rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart3 className="w-3.5 h-3.5 text-indigo-400" />
+            <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest">Community Rankings</p>
+          </div>
+          <p className="text-xs text-[#4b5563] mb-4">
+            Run at month-end to promote/demote communities based on their division standings. Top 2 in each tier move up; bottom 2 move down.
+          </p>
+          <ProcessTiersButton />
+        </div>
 
         {/* All reps */}
         <div className="flex items-center gap-2 mb-4">
