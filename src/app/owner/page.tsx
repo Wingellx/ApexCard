@@ -8,13 +8,15 @@ import {
   getOwnerVerificationRequest,
   getDiscoverableReps,
   getOwnerShortlist,
+  getAllTeamsForOwner,
   type DiscoverableRep,
+  type OwnerTeamRow,
 } from "@/lib/queries";
 import ShortlistButton from "./ShortlistButton";
 import ProcessTiersButton from "./ProcessTiersButton";
 import {
   Clock, Search, ExternalLink, ShieldCheck, Mail,
-  Star, Users, Briefcase, BarChart3,
+  Star, Users, Briefcase, BarChart3, Shield,
 } from "lucide-react";
 
 const fmt    = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -111,6 +113,14 @@ function RepCard({ rep, isShortlisted }: { rep: DiscoverableRep; isShortlisted: 
         <ShortlistButton repId={rep.id} isShortlisted={isShortlisted} />
       </div>
 
+      {/* Team badge */}
+      {rep.teamName && (
+        <div className="flex items-center gap-1.5">
+          <Users className="w-3 h-3 text-indigo-400/60 shrink-0" />
+          <span className="text-[11px] text-indigo-400/80 font-medium truncate">{rep.teamName}</span>
+        </div>
+      )}
+
       {/* Bio */}
       {rep.bio && (
         <p className="text-xs text-[#6b7280] leading-relaxed line-clamp-2">{rep.bio}</p>
@@ -161,16 +171,57 @@ function RepCard({ rep, isShortlisted }: { rep: DiscoverableRep; isShortlisted: 
 
 // ── Full portal ───────────────────────────────────────────────
 
+const TIER_LABELS: Record<number, string> = { 1: "Tier 1", 2: "Tier 2", 3: "Tier 3" };
+const DIVISION_LABELS: Record<string, string> = {
+  sales:       "Sales",
+  improvement: "Improvement",
+  mixed:       "Mixed",
+};
+
+function TeamCard({ team }: { team: OwnerTeamRow }) {
+  return (
+    <div className="bg-[#0f1117] border border-[#1e2130] rounded-2xl p-5 flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500/20 to-violet-500/20 border border-indigo-500/20 flex items-center justify-center shrink-0">
+            <Shield className="w-4 h-4 text-indigo-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-[#f0f2f8] truncate">{team.name}</p>
+            <p className="text-[11px] text-[#4b5563] mt-0.5">{team.memberCount} member{team.memberCount !== 1 ? "s" : ""}</p>
+          </div>
+        </div>
+        {team.tier && (
+          <span className="text-[10px] font-bold text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded-full shrink-0">
+            {TIER_LABELS[team.tier] ?? `Tier ${team.tier}`}
+          </span>
+        )}
+      </div>
+      {team.description && (
+        <p className="text-xs text-[#6b7280] leading-relaxed line-clamp-2">{team.description}</p>
+      )}
+      {team.division && (
+        <div className="flex items-center gap-1.5">
+          <BarChart3 className="w-3 h-3 text-[#4b5563]" />
+          <span className="text-[11px] text-[#4b5563]">{DIVISION_LABELS[team.division] ?? team.division} division</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FullPortal({
   reps,
   shortlist,
   query,
   totalReps,
+  teams,
 }: {
   reps: DiscoverableRep[];
   shortlist: Set<string>;
   query: string;
   totalReps: number;
+  teams: OwnerTeamRow[];
 }) {
   const shortlisted = reps.filter((r) => shortlist.has(r.id));
   const all         = reps;
@@ -224,6 +275,22 @@ function FullPortal({
               {shortlisted.map((rep) => (
                 <RepCard key={rep.id} rep={rep} isShortlisted />
               ))}
+            </div>
+            <div className="border-t border-white/[0.04] mt-8 mb-6" />
+          </div>
+        )}
+
+        {/* Teams section */}
+        {!query && teams.length > 0 && (
+          <div className="mb-10">
+            <div className="flex items-center gap-2 mb-4">
+              <Shield className="w-3.5 h-3.5 text-[#4b5563]" />
+              <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest">
+                Teams ({teams.length})
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {teams.map((t) => <TeamCard key={t.id} team={t} />)}
             </div>
             <div className="border-t border-white/[0.04] mt-8 mb-6" />
           </div>
@@ -304,15 +371,15 @@ export default async function OwnerPortalPage({
   const sp = await searchParams;
   const query = sp.q?.trim() ?? "";
 
-  const [reps, shortlist] = await Promise.all([
+  const [reps, shortlist, teams] = await Promise.all([
     getDiscoverableReps(query || undefined),
     getOwnerShortlist(user.id),
+    getAllTeamsForOwner(),
   ]);
 
-  // Total discoverable count (unfiltered, for header display)
   const totalReps = query ? (await getDiscoverableReps()).length : reps.length;
 
   return (
-    <FullPortal reps={reps} shortlist={shortlist} query={query} totalReps={totalReps} />
+    <FullPortal reps={reps} shortlist={shortlist} query={query} totalReps={totalReps} teams={teams} />
   );
 }

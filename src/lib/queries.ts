@@ -596,7 +596,37 @@ export type DiscoverableRep = {
   totalCash:      number;
   closeRate:      number;
   daysLogged:     number;
+  teamName:       string | null;
+  teamId:         string | null;
 };
+
+export type OwnerTeamRow = {
+  id:          string;
+  name:        string;
+  description: string | null;
+  memberCount: number;
+  division:    string | null;
+  tier:        number | null;
+};
+
+export async function getAllTeamsForOwner(): Promise<OwnerTeamRow[]> {
+  const admin = createAdminClient();
+  const [{ data: teams }, { data: members }] = await Promise.all([
+    admin.from("teams").select("id, name, description, division, tier").order("name"),
+    admin.from("team_members").select("team_id"),
+  ]);
+  if (!teams) return [];
+  const counts = new Map<string, number>();
+  for (const m of members ?? []) counts.set(m.team_id, (counts.get(m.team_id) ?? 0) + 1);
+  return teams.map((t) => ({
+    id:          t.id          as string,
+    name:        t.name        as string,
+    description: t.description as string | null,
+    memberCount: counts.get(t.id as string) ?? 0,
+    division:    t.division    as string | null,
+    tier:        t.tier        as number | null,
+  }));
+}
 
 export async function getDiscoverableReps(search?: string): Promise<DiscoverableRep[]> {
   const admin = createAdminClient();
@@ -615,10 +645,12 @@ export async function getDiscoverableReps(search?: string): Promise<Discoverable
   if (!reps?.length) return [];
 
   const repIds = reps.map((r) => r.id as string);
-  const { data: logs } = await admin
-    .from("call_logs")
-    .select("user_id, shows, offers_taken, cash_collected")
-    .in("user_id", repIds);
+
+  const [{ data: logs }, { data: memberships }, { data: teams }] = await Promise.all([
+    admin.from("call_logs").select("user_id, shows, offers_taken, cash_collected").in("user_id", repIds),
+    admin.from("team_members").select("user_id, team_id"),
+    admin.from("teams").select("id, name"),
+  ]);
 
   const byUser = new Map<string, { shows: number; offersTaken: number; cash: number; days: number }>();
   for (const rid of repIds) byUser.set(rid, { shows: 0, offersTaken: 0, cash: 0, days: 0 });
@@ -631,8 +663,12 @@ export async function getDiscoverableReps(search?: string): Promise<Discoverable
     agg.days        += 1;
   }
 
+  const teamNameById = new Map((teams ?? []).map((t) => [t.id as string, t.name as string]));
+  const userTeam = new Map((memberships ?? []).map((m) => [m.user_id as string, m.team_id as string]));
+
   return reps.map((r) => {
-    const agg = byUser.get(r.id as string)!;
+    const agg    = byUser.get(r.id as string)!;
+    const tid    = userTeam.get(r.id as string) ?? null;
     return {
       id:             r.id as string,
       name:           (r.full_name as string)?.trim() || (r.email as string)?.split("@")[0] || "Rep",
@@ -644,6 +680,8 @@ export async function getDiscoverableReps(search?: string): Promise<Discoverable
       totalCash:      agg.cash,
       closeRate:      agg.shows > 0 ? (agg.offersTaken / agg.shows) * 100 : 0,
       daysLogged:     agg.days,
+      teamName:       tid ? (teamNameById.get(tid) ?? null) : null,
+      teamId:         tid,
     };
   });
 }
