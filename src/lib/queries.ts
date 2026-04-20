@@ -233,12 +233,13 @@ export async function getProfileFull(userId: string) {
 }
 
 export async function getUserIdByUsername(username: string): Promise<string | null> {
-  const admin = createAdminClient();
-  const { data } = await admin
+  const supabase = await createClient();
+  const { data, error } = await supabase
     .from("profiles")
     .select("id")
     .eq("username", username.toLowerCase())
     .maybeSingle();
+  if (error) console.error("[getUserIdByUsername]", error.message);
   return data?.id ?? null;
 }
 
@@ -327,19 +328,21 @@ export async function getUserMonthlyLeaderboardRank(userId: string): Promise<num
 
 // ── Public stats (admin client — bypasses RLS) ──────────────────
 export async function getPublicLifetimeStats(userId: string) {
-  const admin = createAdminClient();
+  const supabase = await createClient();
 
-  const [{ data: logs }, { data: profile }] = await Promise.all([
-    admin
+  const [{ data: logs, error: logsErr }, { data: profile, error: profileErr }] = await Promise.all([
+    supabase
       .from("call_logs")
       .select("date, calls_taken, shows, offers_made, offers_taken, cash_collected, commission_earned")
       .eq("user_id", userId),
-    admin
+    supabase
       .from("profiles")
       .select("full_name, email, is_verified, verified_by_name, verified_by_company, username, role")
       .eq("id", userId)
       .maybeSingle(),
   ]);
+  if (logsErr)   console.error("[getPublicLifetimeStats] logs:",    logsErr.message);
+  if (profileErr) console.error("[getPublicLifetimeStats] profile:", profileErr.message);
 
   if (!profile) return null;
 
