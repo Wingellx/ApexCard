@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ShieldCheck, Crown, ChevronLeft, Flame, Star } from "lucide-react";
+import { ShieldCheck, Crown, ChevronLeft, Flame, Star, CalendarDays } from "lucide-react";
+import type { VerifiedPeriodStats } from "@/lib/queries";
 
 const ROLE_LABELS: Record<string, string> = {
   closer:  "Closer",
@@ -14,6 +15,9 @@ const ROLE_LABELS: Record<string, string> = {
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 const fmtNum = (n: number) => n.toLocaleString();
+function fmtDate(d: string) {
+  return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
 
 interface Props {
   name: string;
@@ -36,6 +40,7 @@ interface Props {
   daysLogged: number;
   streak?: number;
   monthlyRank?: number | null;
+  verifiedPeriod?: VerifiedPeriodStats | null;
 }
 
 function rankLabel(rank: number) {
@@ -47,7 +52,7 @@ function rankLabel(rank: number) {
 export default function PublicStatsCard({
   name, role, isVerified, verifiedByName, verifiedByCompany,
   totals, showRate, closeRate, cashPerClose, bestDay, daysLogged,
-  streak = 0, monthlyRank,
+  streak = 0, monthlyRank, verifiedPeriod,
 }: Props) {
   const roleLabel = role ? (ROLE_LABELS[role] ?? role) : null;
 
@@ -146,6 +151,84 @@ export default function PublicStatsCard({
             )}
           </div>
 
+          {/* ── Verified Performance Section ─────────────────────── */}
+          {isVerified && verifiedPeriod && (
+            <div
+              className="px-6 sm:px-8 py-6"
+              style={{
+                borderBottom: "1px solid rgba(255,255,255,0.04)",
+                background: "rgba(16,185,129,0.03)",
+              }}
+            >
+              {/* Section header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em]">
+                    Verified Performance
+                  </p>
+                </div>
+                {verifiedByName && (
+                  <p className="text-[10px] text-[#6b7280]">
+                    {verifiedByName}{verifiedByCompany ? ` · ${verifiedByCompany}` : ""}
+                  </p>
+                )}
+              </div>
+
+              {/* Period badge */}
+              <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-2.5 py-1 mb-4">
+                <CalendarDays className="w-3 h-3 text-emerald-400/70" />
+                <span className="text-[10px] font-semibold text-emerald-400/80">
+                  {fmtDate(verifiedPeriod.startDate)} – {fmtDate(verifiedPeriod.endDate)}
+                </span>
+              </div>
+
+              {/* Period hero stat */}
+              <p
+                className="text-[9px] font-black uppercase tracking-[0.3em] mb-1.5"
+                style={{ color: "rgba(16,185,129,0.5)" }}
+              >
+                Cash Collected (Period)
+              </p>
+              <p
+                className="font-black tabular-nums tracking-tight leading-none mb-4"
+                style={{
+                  fontSize: "clamp(2rem, 9vw, 3rem)",
+                  color: "#10b981",
+                  textShadow: "0 0 30px rgba(16,185,129,0.2)",
+                  fontFamily: "var(--font-sora), system-ui, sans-serif",
+                }}
+              >
+                {fmt(verifiedPeriod.totals.cash)}
+              </p>
+
+              {/* Period stats grid */}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: "Show Rate",    value: `${verifiedPeriod.showRate.toFixed(1)}%`,  color: "#818cf8" },
+                  { label: "Close Rate",   value: `${verifiedPeriod.closeRate.toFixed(1)}%`, color: "#a78bfa" },
+                  { label: "Cash / Close", value: fmt(verifiedPeriod.cashPerClose),           color: "#c4b5fd" },
+                  { label: "Calls",        value: fmtNum(verifiedPeriod.totals.calls),        color: "#6366f1" },
+                  { label: "Closed",       value: fmtNum(verifiedPeriod.totals.offersTaken),  color: "#10b981" },
+                  { label: "Commission",   value: fmt(verifiedPeriod.totals.commission),      color: "#8b5cf6" },
+                ].map(({ label, value, color }) => (
+                  <div
+                    key={label}
+                    className="px-3 py-2.5 rounded-xl"
+                    style={{ background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.1)" }}
+                  >
+                    <p className="text-[8px] font-black uppercase tracking-[0.15em] mb-1" style={{ color: "rgba(75,85,99,0.8)" }}>
+                      {label}
+                    </p>
+                    <p className="text-[0.9rem] font-extrabold tabular-nums leading-none" style={{ color }}>
+                      {value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ── Hero: Lifetime Cash ──────────────────────────────── */}
           <div
             className="px-6 sm:px-8 py-7"
@@ -155,7 +238,7 @@ export default function PublicStatsCard({
               className="text-[9px] font-black uppercase tracking-[0.3em] mb-2"
               style={{ color: "rgba(16,185,129,0.5)" }}
             >
-              Lifetime Cash Collected
+              {isVerified && verifiedPeriod ? "Lifetime Cash Collected" : "Cash Collected"}
             </p>
             <p
               className="font-black tabular-nums tracking-tight leading-none"
@@ -255,8 +338,8 @@ export default function PublicStatsCard({
             </div>
           </div>
 
-          {/* ── Verified by Manager Panel ────────────────────────── */}
-          {isVerified && verifiedByName && (
+          {/* ── Verified by Manager Panel (no period) ────────────── */}
+          {isVerified && verifiedByName && !verifiedPeriod && (
             <div
               className="px-6 sm:px-8 py-4 flex items-center gap-3"
               style={{

@@ -1,10 +1,14 @@
 import { notFound, redirect } from "next/navigation";
-import { CheckCircle2, ShieldCheck, PhoneCall, DollarSign, Target, Handshake, Wallet, CalendarDays } from "lucide-react";
+import { CheckCircle2, ShieldCheck, CalendarDays } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPublicLifetimeStats } from "@/lib/queries";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+
+function fmtDate(d: string) {
+  return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
 
 // ── Server action — manager confirms ─────────────────────────────
 async function confirmVerification(token: string) {
@@ -24,13 +28,11 @@ async function confirmVerification(token: string) {
 
   const now = new Date().toISOString();
 
-  // Update verification request
   await admin
     .from("verification_requests")
     .update({ status: "verified", verified_at: now })
     .eq("id", req.id);
 
-  // Update user's profile
   await admin
     .from("profiles")
     .update({
@@ -58,7 +60,7 @@ export default async function VerifyPage({
   const admin = createAdminClient();
   const { data: req } = await admin
     .from("verification_requests")
-    .select("id, user_id, manager_name, manager_company, manager_email, status, verified_at, created_at")
+    .select("id, user_id, manager_name, manager_company, manager_email, status, verified_at, created_at, verification_start_date")
     .eq("verify_token", token)
     .maybeSingle();
 
@@ -66,6 +68,37 @@ export default async function VerifyPage({
 
   const stats = await getPublicLifetimeStats(req.user_id);
   if (!stats) notFound();
+
+  // Compute period stats for this specific verification request
+  const startDate  = req.verification_start_date as string | null;
+  const endDate    = new Date().toISOString().split("T")[0];
+  let periodStats  = null;
+
+  if (startDate) {
+    const { data: logs } = await admin
+      .from("call_logs")
+      .select("calls_taken, shows, offers_made, offers_taken, cash_collected, commission_earned")
+      .eq("user_id", req.user_id)
+      .gte("date", startDate)
+      .lte("date", endDate);
+
+    const totals = (logs ?? []).reduce(
+      (a, r) => ({
+        calls:       a.calls       + (r.calls_taken       ?? 0),
+        shows:       a.shows       + (r.shows             ?? 0),
+        offersTaken: a.offersTaken + (r.offers_taken      ?? 0),
+        cash:        a.cash        + Number(r.cash_collected    ?? 0),
+        commission:  a.commission  + Number(r.commission_earned ?? 0),
+      }),
+      { calls: 0, shows: 0, offersTaken: 0, cash: 0, commission: 0 }
+    );
+    periodStats = {
+      ...totals,
+      showRate:    totals.calls        > 0 ? (totals.shows       / totals.calls)       * 100 : 0,
+      closeRate:   totals.shows        > 0 ? (totals.offersTaken / totals.shows)       * 100 : 0,
+      cashPerClose: totals.offersTaken > 0 ?  totals.cash        / totals.offersTaken        : 0,
+    };
+  }
 
   const isConfirmed = confirmed === "1" || req.status === "verified";
   const isAlready   = already === "1";
@@ -98,7 +131,13 @@ export default async function VerifyPage({
                 ? `${stats.name}'s stats were already marked as verified.`
                 : `You've verified ${stats.name}'s sales performance.`}
             </p>
-            <p className="text-xs text-[#6b7280]">
+            {startDate && (
+              <p className="text-xs text-[#6b7280] mt-2 flex items-center justify-center gap-1.5">
+                <CalendarDays className="w-3 h-3" />
+                Period: {fmtDate(startDate)} – {fmtDate(endDate)}
+              </p>
+            )}
+            <p className="text-xs text-[#6b7280] mt-1">
               This will appear on their public ApexCard profile.
             </p>
           </div>
@@ -121,26 +160,38 @@ export default async function VerifyPage({
               <h1 className="text-2xl font-extrabold text-[#f0f2f8] tracking-tight mb-1">
                 Verify {stats.name}&apos;s performance
               </h1>
-              <p className="text-sm text-[#6b7280]">
+              <p className="text-sm text-[#6b7280] mb-1">
                 {req.manager_name} · {req.manager_company}
               </p>
 
-              {/* Key stats */}
-              <div className="grid grid-cols-2 gap-3 mt-6">
-                {[
-                  { label: "Lifetime Cash",   value: fmt(stats.totals.cash),       color: "text-emerald-400" },
-                  { label: "Commission",       value: fmt(stats.totals.commission), color: "text-violet-400"  },
-                  { label: "Show Rate",        value: `${stats.showRate.toFixed(1)}%`,  color: "text-[#f0f2f8]" },
-                  { label: "Close Rate",       value: `${stats.closeRate.toFixed(1)}%`, color: "text-[#f0f2f8]" },
-                  { label: "Calls Taken",      value: stats.totals.calls.toLocaleString(), color: "text-[#f0f2f8]" },
-                  { label: "Deals Closed",     value: stats.totals.offersTaken.toLocaleString(), color: "text-[#f0f2f8]" },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className="bg-[#0d0f15] border border-[#1e2130] rounded-xl px-4 py-3">
-                    <p className="text-[10px] text-[#6b7280] uppercase tracking-wider mb-1">{label}</p>
-                    <p className={`text-lg font-extrabold tabular-nums ${color}`}>{value}</p>
-                  </div>
-                ))}
-              </div>
+              {/* Date range badge */}
+              {startDate && (
+                <div className="inline-flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-lg px-3 py-1.5 mt-3 mb-1">
+                  <CalendarDays className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="text-xs font-semibold text-indigo-300">
+                    Period: {fmtDate(startDate)} – {fmtDate(endDate)}
+                  </span>
+                </div>
+              )}
+
+              {/* Period stats */}
+              {periodStats && (
+                <div className="grid grid-cols-2 gap-3 mt-5">
+                  {[
+                    { label: startDate ? "Cash (Period)" : "Lifetime Cash", value: fmt(periodStats.cash),                  color: "text-emerald-400" },
+                    { label: "Commission",                                   value: fmt(periodStats.commission),            color: "text-violet-400"  },
+                    { label: "Show Rate",                                    value: `${periodStats.showRate.toFixed(1)}%`,  color: "text-[#f0f2f8]"  },
+                    { label: "Close Rate",                                   value: `${periodStats.closeRate.toFixed(1)}%`, color: "text-[#f0f2f8]"  },
+                    { label: "Calls Taken",                                  value: periodStats.calls.toLocaleString(),     color: "text-[#f0f2f8]"  },
+                    { label: "Deals Closed",                                 value: periodStats.offersTaken.toLocaleString(), color: "text-[#f0f2f8]" },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} className="bg-[#0d0f15] border border-[#1e2130] rounded-xl px-4 py-3">
+                      <p className="text-[10px] text-[#6b7280] uppercase tracking-wider mb-1">{label}</p>
+                      <p className={`text-lg font-extrabold tabular-nums ${color}`}>{value}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Confirm form */}
@@ -150,8 +201,7 @@ export default async function VerifyPage({
                 <p className="text-sm text-[#6b7280] leading-relaxed">
                   By clicking <strong className="text-[#f0f2f8]">Confirm Verification</strong>, you confirm that you managed{" "}
                   <strong className="text-[#f0f2f8]">{stats.name}</strong> at{" "}
-                  <strong className="text-[#f0f2f8]">{req.manager_company}</strong> and that their reported
-                  stats are accurate to the best of your knowledge.
+                  <strong className="text-[#f0f2f8]">{req.manager_company}</strong>{startDate ? ` from ${fmtDate(startDate)} to ${fmtDate(endDate)}` : ""} and that their reported stats are accurate to the best of your knowledge.
                 </p>
               </div>
 

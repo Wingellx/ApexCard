@@ -71,7 +71,7 @@ export default async function StatsPage() {
   const { data: verifyReq, error: verifyError } = user
     ? await admin
         .from("verification_requests")
-        .select("manager_name, manager_company, manager_email, status, created_at, verified_at")
+        .select("manager_name, manager_company, manager_email, status, created_at, verified_at, verification_start_date")
         .eq("user_id", user.id)
         .in("status", ["pending", "verified"])
         .maybeSingle()

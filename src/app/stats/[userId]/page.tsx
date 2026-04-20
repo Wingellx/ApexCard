@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { getPublicLifetimeStats, getUserMonthlyLeaderboardRank } from "@/lib/queries";
+import { getPublicLifetimeStats, getUserMonthlyLeaderboardRank, getVerifiedPeriodStats } from "@/lib/queries";
 import PublicStatsCard from "@/components/public/PublicStatsCard";
 
 export default async function LegacyStatsPage({
@@ -15,7 +15,10 @@ export default async function LegacyStatsPage({
     redirect(`/card/${stats.username}`);
   }
 
-  const monthlyRank = await getUserMonthlyLeaderboardRank(userId);
+  const [monthlyRank, verifiedPeriod] = await Promise.all([
+    getUserMonthlyLeaderboardRank(userId),
+    getVerifiedPeriodStats(userId),
+  ]);
 
-  return <PublicStatsCard {...stats} monthlyRank={monthlyRank} />;
+  return <PublicStatsCard {...stats} monthlyRank={monthlyRank} verifiedPeriod={verifiedPeriod} />;
 }
