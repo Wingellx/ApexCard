@@ -186,7 +186,7 @@ function FullPortal({
             </div>
             <div>
               <h1 className="text-base font-extrabold text-[#f0f2f8] tracking-tight leading-none">Rep Directory</h1>
-              <p className="text-[11px] text-[#4b5563] mt-0.5">{totalReps} discoverable rep{totalReps !== 1 ? "s" : ""}</p>
+              <p className="text-[11px] text-[#4b5563] mt-0.5">{totalReps} rep{totalReps !== 1 ? "s" : ""}</p>
             </div>
           </div>
           <Link
@@ -253,7 +253,7 @@ function FullPortal({
           <div className="bg-[#0f1117] border border-[#1e2130] rounded-2xl py-16 text-center">
             <Search className="w-10 h-10 text-[#1e2130] mx-auto mb-4" />
             <p className="text-sm font-semibold text-[#374151]">
-              {query ? `No reps match "${query}"` : "No discoverable reps yet"}
+              {query ? `No reps match "${query}"` : "No reps yet"}
             </p>
             {!query && (
               <p className="text-xs text-[#2d3147] mt-1">

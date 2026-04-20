@@ -604,8 +604,7 @@ export async function getDiscoverableReps(search?: string): Promise<Discoverable
   let q = admin
     .from("profiles")
     .select("id, full_name, email, username, role, is_verified, bio, contact_enabled")
-    .eq("account_type", "rep")
-    .eq("discoverable", true);
+    .eq("account_type", "rep");
 
   if (search?.trim()) {
     const s = search.trim().replace(/[%_]/g, "\\$&");
