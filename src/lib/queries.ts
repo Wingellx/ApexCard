@@ -233,8 +233,8 @@ export async function getProfileFull(userId: string) {
 }
 
 export async function getUserIdByUsername(username: string): Promise<string | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const admin = createAdminClient();
+  const { data, error } = await admin
     .from("profiles")
     .select("id")
     .eq("username", username.toLowerCase())
@@ -328,14 +328,14 @@ export async function getUserMonthlyLeaderboardRank(userId: string): Promise<num
 
 // ── Public stats (admin client — bypasses RLS) ──────────────────
 export async function getPublicLifetimeStats(userId: string) {
-  const supabase = await createClient();
+  const admin = createAdminClient();
 
   const [{ data: logs, error: logsErr }, { data: profile, error: profileErr }] = await Promise.all([
-    supabase
+    admin
       .from("call_logs")
       .select("date, calls_taken, shows, offers_made, offers_taken, cash_collected, commission_earned")
       .eq("user_id", userId),
-    supabase
+    admin
       .from("profiles")
       .select("full_name, email, is_verified, verified_by_name, verified_by_company, username, role")
       .eq("id", userId)
@@ -584,6 +584,67 @@ export async function getAdminTeamData(teamId: string): Promise<AdminMemberRow[]
       split:          splitMap.get(uid) ?? {},
     };
   });
+}
+
+// ── Verified period stats (public card) ─────────────────────
+
+export type VerifiedPeriodStats = {
+  managerName:    string;
+  managerCompany: string;
+  startDate:      string;
+  endDate:        string;
+  totals: { cash: number; commission: number; calls: number; offersMade: number; offersTaken: number; shows: number };
+  showRate:    number;
+  closeRate:   number;
+  cashPerClose: number;
+  daysLogged:  number;
+};
+
+export async function getVerifiedPeriodStats(userId: string): Promise<VerifiedPeriodStats | null> {
+  const admin = createAdminClient();
+
+  const { data: req } = await admin
+    .from("verification_requests")
+    .select("manager_name, manager_company, verification_start_date, status")
+    .eq("user_id", userId)
+    .eq("status", "verified")
+    .maybeSingle();
+
+  if (!req || !req.verification_start_date) return null;
+
+  const startDate = req.verification_start_date as string;
+  const endDate   = new Date().toISOString().split("T")[0];
+
+  const { data: logs } = await admin
+    .from("call_logs")
+    .select("calls_taken, shows, offers_made, offers_taken, cash_collected, commission_earned")
+    .eq("user_id", userId)
+    .gte("date", startDate)
+    .lte("date", endDate);
+
+  const totals = (logs ?? []).reduce(
+    (a, r) => ({
+      calls:       a.calls       + (r.calls_taken       ?? 0),
+      shows:       a.shows       + (r.shows             ?? 0),
+      offersMade:  a.offersMade  + (r.offers_made       ?? 0),
+      offersTaken: a.offersTaken + (r.offers_taken      ?? 0),
+      cash:        a.cash        + Number(r.cash_collected    ?? 0),
+      commission:  a.commission  + Number(r.commission_earned ?? 0),
+    }),
+    { calls: 0, shows: 0, offersMade: 0, offersTaken: 0, cash: 0, commission: 0 }
+  );
+
+  return {
+    managerName:    req.manager_name    as string,
+    managerCompany: req.manager_company as string,
+    startDate,
+    endDate,
+    totals,
+    showRate:    totals.calls        > 0 ? (totals.shows       / totals.calls)       * 100 : 0,
+    closeRate:   totals.shows        > 0 ? (totals.offersTaken / totals.shows)       * 100 : 0,
+    cashPerClose: totals.offersTaken > 0 ?  totals.cash        / totals.offersTaken        : 0,
+    daysLogged:  logs?.length ?? 0,
+  };
 }
 
 // ── Owner portal ─────────────────────────────────────────────
