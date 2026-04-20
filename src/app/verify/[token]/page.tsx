@@ -60,7 +60,7 @@ export default async function VerifyPage({
   const admin = createAdminClient();
   const { data: req } = await admin
     .from("verification_requests")
-    .select("id, user_id, manager_name, manager_company, manager_email, status, verified_at, created_at, verification_start_date")
+    .select("id, user_id, manager_name, manager_company, manager_email, status, verified_at, created_at, verification_start_date, decline_token")
     .eq("verify_token", token)
     .maybeSingle();
 
@@ -217,7 +217,7 @@ export default async function VerifyPage({
               <p className="text-center text-xs text-[#6b7280] mt-4">
                 Changed your mind?{" "}
                 <a
-                  href={`/api/verify/decline/${token}`}
+                  href={`/api/verify/decline/${req.decline_token}`}
                   className="text-rose-400 hover:text-rose-300 transition-colors"
                 >
                   Decline this request

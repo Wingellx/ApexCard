@@ -239,7 +239,8 @@ export async function getUserIdByUsername(username: string): Promise<string | nu
     .select("id")
     .eq("username", username.toLowerCase())
     .maybeSingle();
-  if (error) console.error("[getUserIdByUsername]", error.message);
+  if (error) console.error("[getUserIdByUsername] error for username=%s:", username, error.message);
+  else console.log("[getUserIdByUsername] username=%s → id=%s", username, data?.id ?? "null");
   return data?.id ?? null;
 }
 
@@ -341,8 +342,9 @@ export async function getPublicLifetimeStats(userId: string) {
       .eq("id", userId)
       .maybeSingle(),
   ]);
-  if (logsErr)   console.error("[getPublicLifetimeStats] logs:",    logsErr.message);
-  if (profileErr) console.error("[getPublicLifetimeStats] profile:", profileErr.message);
+  if (logsErr)   console.error("[getPublicLifetimeStats] logs error for userId=%s:", userId, logsErr.message);
+  if (profileErr) console.error("[getPublicLifetimeStats] profile error for userId=%s:", userId, profileErr.message);
+  console.log("[getPublicLifetimeStats] userId=%s profile=%s logs=%s", userId, profile ? "found" : "null", logs?.length ?? "null");
 
   if (!profile) return null;
 
