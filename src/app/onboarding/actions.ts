@@ -159,7 +159,7 @@ export async function completeOnboarding(): Promise<void> {
     .eq("id", user.id);
 
   if (profile?.account_type === "owner") {
-    redirect("/dashboard/owner");
+    redirect("/owner");
   } else {
     redirect("/dashboard");
   }

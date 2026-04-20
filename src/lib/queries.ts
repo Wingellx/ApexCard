@@ -341,9 +341,9 @@ export async function getPublicLifetimeStats(userId: string) {
       .maybeSingle(),
   ]);
 
-  if (!logs || logs.length === 0) return null;
+  if (!profile) return null;
 
-  const totals = logs.reduce(
+  const totals = (logs ?? []).reduce(
     (a, r) => ({
       calls:       a.calls       + (r.calls_taken       ?? 0),
       shows:       a.shows       + (r.shows             ?? 0),
@@ -358,15 +358,15 @@ export async function getPublicLifetimeStats(userId: string) {
   const showRate     = totals.calls        > 0 ? (totals.shows       / totals.calls)       * 100 : 0;
   const closeRate    = totals.shows        > 0 ? (totals.offersTaken / totals.shows)       * 100 : 0;
   const cashPerClose = totals.offersTaken  > 0 ?  totals.cash        / totals.offersTaken        : 0;
-  const bestDay      = Math.max(...logs.map((r) => Number(r.cash_collected ?? 0)));
-  const daysLogged   = logs.length;
+  const bestDay      = logs && logs.length > 0 ? Math.max(...logs.map((r) => Number(r.cash_collected ?? 0))) : 0;
+  const daysLogged   = logs?.length ?? 0;
   const name            = profile?.full_name?.trim() || profile?.email?.split("@")[0] || "Sales Pro";
   const isVerified        = profile?.is_verified        ?? false;
   const verifiedByName    = profile?.verified_by_name    ?? null;
   const verifiedByCompany = profile?.verified_by_company ?? null;
   const username          = profile?.username             ?? null;
   const role              = profile?.role                 ?? null;
-  const sortedDates       = [...logs.map((r) => r.date as string)].sort().reverse();
+  const sortedDates       = [...(logs ?? []).map((r) => r.date as string)].sort().reverse();
   const streak            = calculateStreak(sortedDates);
 
   return { totals, showRate, closeRate, cashPerClose, bestDay, daysLogged, name, isVerified, verifiedByName, verifiedByCompany, username, role, streak };

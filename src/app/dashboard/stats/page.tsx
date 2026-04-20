@@ -83,13 +83,24 @@ export default async function StatsPage() {
   if (logs.length === 0) {
     return (
       <div className="px-4 sm:px-8 py-6 sm:py-8 max-w-[900px]">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center justify-center">
-            <Award className="w-5 h-5 text-indigo-400" />
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center justify-center">
+              <Award className="w-5 h-5 text-indigo-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-extrabold text-[#f0f2f8] tracking-tight">Lifetime Stats</h1>
+              <p className="text-sm text-[#6b7280] mt-0.5">Log some calls to start building your stats.</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-extrabold text-[#f0f2f8] tracking-tight">Lifetime Stats</h1>
-            <p className="text-sm text-[#6b7280] mt-0.5">Log some calls first to see your stats.</p>
+          <div className="flex items-center gap-2">
+            <a
+              href={publicUrl} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-[#6b7280] hover:text-[#f0f2f8] border border-[#1e2130] hover:border-[#2a2f45] px-3 py-2 rounded-lg transition-colors"
+            >
+              <ExternalLink className="w-3.5 h-3.5" /> Preview card
+            </a>
+            <CopyLinkButton url={publicUrl} />
           </div>
         </div>
       </div>
