@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUserTeam } from "@/lib/queries";
 
-export async function upsertCRMSubmission(
+export async function upsertDailyLog(
   _prev: { error?: string; success?: boolean } | null,
   formData: FormData
 ): Promise<{ error?: string; success?: boolean }> {
@@ -14,68 +14,41 @@ export async function upsertCRMSubmission(
   if (!user) return { error: "Unauthorized." };
 
   const userTeam = await getUserTeam(user.id);
-  if (!userTeam) return { error: "You must be part of a team to submit CRM entries." };
+  if (!userTeam) return { error: "You must be part of a team to submit logs." };
 
-  const contactName = (formData.get("contact_name") as string)?.trim();
-  if (!contactName) return { error: "Contact name is required." };
-
-  const status          = (formData.get("status") as string) || "new_lead";
-  const outcome         = (formData.get("outcome") as string) || "pending";
-  const submissionDate  = (formData.get("submission_date") as string) || new Date().toISOString().split("T")[0];
-  const dealValueRaw    = (formData.get("deal_value") as string)?.trim();
-  const dealValue       = dealValueRaw ? parseFloat(dealValueRaw) : null;
-  const notes           = (formData.get("notes") as string)?.trim() || null;
-  const company         = (formData.get("company") as string)?.trim() || null;
-  const contactEmail    = (formData.get("contact_email") as string)?.trim() || null;
-  const contactPhone    = (formData.get("contact_phone") as string)?.trim() || null;
-  const nextFollowup    = (formData.get("next_followup") as string) || null;
-
-  if (dealValue !== null && (isNaN(dealValue) || dealValue < 0)) {
-    return { error: "Deal value must be a positive number." };
+  function int(key: string) {
+    const v = parseInt(formData.get(key) as string ?? "0", 10);
+    return isNaN(v) || v < 0 ? 0 : v;
   }
+  function decimal(key: string) {
+    const v = parseFloat(formData.get(key) as string ?? "0");
+    return isNaN(v) || v < 0 ? 0 : Math.min(v, 24);
+  }
+
+  const logDate = (formData.get("log_date") as string) || new Date().toISOString().split("T")[0];
 
   const admin = createAdminClient();
   const { error } = await admin
-    .from("crm_submissions")
+    .from("crm_daily_logs")
     .upsert(
       {
-        user_id:         user.id,
-        team_id:         userTeam.teamId,
-        contact_name:    contactName,
-        submission_date: submissionDate,
-        status,
-        outcome,
-        deal_value:      dealValue,
-        notes,
-        company,
-        contact_email:   contactEmail,
-        contact_phone:   contactPhone,
-        next_followup:   nextFollowup || null,
-        updated_at:      new Date().toISOString(),
+        user_id:           user.id,
+        team_id:           userTeam.teamId,
+        log_date:          logDate,
+        outbound_messages: int("outbound_messages"),
+        followup_messages: int("followup_messages"),
+        calls_pitched:     int("calls_pitched"),
+        calls_booked:      int("calls_booked"),
+        replied:           int("replied"),
+        disqualified:      int("disqualified"),
+        hours_worked:      decimal("hours_worked"),
+        updated_at:        new Date().toISOString(),
       },
-      { onConflict: "user_id,contact_name,submission_date" }
+      { onConflict: "user_id,log_date" }
     );
 
   if (error) return { error: error.message };
 
   revalidatePath("/dashboard/crm");
   return { success: true };
-}
-
-export async function deleteCRMSubmission(id: string): Promise<{ error?: string }> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Unauthorized." };
-
-  const admin = createAdminClient();
-  const { error } = await admin
-    .from("crm_submissions")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", user.id);
-
-  if (error) return { error: error.message };
-
-  revalidatePath("/dashboard/crm");
-  return {};
 }
