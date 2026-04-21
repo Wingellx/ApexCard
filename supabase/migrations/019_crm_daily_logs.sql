@@ -1,4 +1,5 @@
--- ── 019: CRM daily logs (replaces per-contact submission model) ──
+-- ── 019: CRM daily logs ──────────────────────────────────────────
+-- Score is computed in the application layer using KPI targets (migration 020)
 
 CREATE TABLE crm_daily_logs (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -12,14 +13,6 @@ CREATE TABLE crm_daily_logs (
   replied           INTEGER NOT NULL DEFAULT 0 CHECK (replied >= 0),
   disqualified      INTEGER NOT NULL DEFAULT 0 CHECK (disqualified >= 0),
   hours_worked      NUMERIC(4, 1) NOT NULL DEFAULT 0 CHECK (hours_worked >= 0 AND hours_worked <= 24),
-  score             NUMERIC(8, 2) GENERATED ALWAYS AS (
-    (calls_booked     * 10.0) +
-    (calls_pitched    *  3.0) +
-    (replied          *  2.0) +
-    (followup_messages * 1.5) +
-    (hours_worked     *  2.0) +
-    (outbound_messages * 1.0)
-  ) STORED,
   created_at        TIMESTAMPTZ DEFAULT now(),
   updated_at        TIMESTAMPTZ DEFAULT now(),
   CONSTRAINT crm_daily_logs_unique UNIQUE(user_id, log_date)

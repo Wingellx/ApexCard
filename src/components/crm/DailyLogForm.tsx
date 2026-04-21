@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { upsertDailyLog } from "@/app/dashboard/crm/actions";
 import Button from "@/components/ui/Button";
-import type { DailyLog } from "@/lib/crm-queries";
+import type { DailyLog, CRMKpi } from "@/lib/crm-queries";
 
 const inputCls =
   "w-full bg-[#0d0f15] border border-[#1e2130] rounded-lg px-4 py-2.5 text-sm text-[#f0f2f8] placeholder-[#374151] focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors text-center";
@@ -21,11 +21,21 @@ const FIELDS: { key: keyof DailyLog; label: string; decimal?: boolean }[] = [
   { key: "hours_worked",      label: "Hours Worked", decimal: true },
 ];
 
+const KPI_TARGET_KEY: Record<string, keyof CRMKpi> = {
+  outbound_messages: "outbound_target",
+  followup_messages: "followup_target",
+  calls_pitched:     "pitched_target",
+  calls_booked:      "booked_target",
+  replied:           "replied_target",
+  hours_worked:      "hours_target",
+};
+
 interface Props {
   today: DailyLog | null;
+  kpi:   CRMKpi | null;
 }
 
-export default function DailyLogForm({ today }: Props) {
+export default function DailyLogForm({ today, kpi }: Props) {
   const [state, formAction, isPending] = useActionState(upsertDailyLog, null);
   const date = new Date().toISOString().split("T")[0];
 
@@ -48,37 +58,29 @@ export default function DailyLogForm({ today }: Props) {
       <form action={formAction} className="space-y-4">
         <input type="hidden" name="log_date" value={date} />
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {FIELDS.slice(0, 4).map(f => (
-            <div key={f.key}>
-              <label className={labelCls}>{f.label}</label>
-              <input
-                name={f.key}
-                type="number"
-                min="0"
-                step={f.decimal ? "0.5" : "1"}
-                defaultValue={today ? String(today[f.key] ?? 0) : "0"}
-                className={inputCls}
-              />
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          {FIELDS.slice(4).map(f => (
-            <div key={f.key}>
-              <label className={labelCls}>{f.label}</label>
-              <input
-                name={f.key}
-                type="number"
-                min="0"
-                step={f.decimal ? "0.5" : "1"}
-                defaultValue={today ? String(today[f.key] ?? 0) : "0"}
-                className={inputCls}
-              />
-            </div>
-          ))}
-        </div>
+        {[FIELDS.slice(0, 4), FIELDS.slice(4)].map((group, gi) => (
+          <div key={gi} className={`grid gap-3 ${gi === 0 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
+            {group.map(f => {
+              const target = kpi ? Number(kpi[KPI_TARGET_KEY[f.key]] ?? 0) : 0;
+              return (
+                <div key={f.key}>
+                  <label className={labelCls}>
+                    {f.label}
+                    {target > 0 && <span className="ml-1 text-indigo-400/60">/{target}</span>}
+                  </label>
+                  <input
+                    name={f.key}
+                    type="number"
+                    min="0"
+                    step={f.decimal ? "0.5" : "1"}
+                    defaultValue={today ? String(today[f.key] ?? 0) : "0"}
+                    className={inputCls}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        ))}
 
         {state?.error && (
           <div className="bg-rose-500/10 border border-rose-500/20 rounded-lg px-4 py-3">

@@ -1,5 +1,79 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// ── KPI types & scoring ───────────────────────────────────────────
+
+export type CRMKpi = {
+  id: string;
+  team_id: string;
+  outbound_target: number;
+  followup_target: number;
+  pitched_target: number;
+  booked_target: number;
+  replied_target: number;
+  hours_target: number;
+  updated_at: string;
+};
+
+// Base points per unit for each metric
+const BASE_WEIGHTS = {
+  calls_booked:      10.0,
+  calls_pitched:      3.0,
+  replied:            2.0,
+  followup_messages:  1.5,
+  hours_worked:       2.0,
+  outbound_messages:  1.0,
+} as const;
+
+// multiplier: 1.0x at/below target, scales to 2.0x at 3× target
+function achievementMultiplier(actual: number, target: number): number {
+  if (target <= 0 || actual < target) return 1.0;
+  return Math.min(2.0, 1.0 + 0.5 * (actual / target - 1.0));
+}
+
+export function computeScore(log: DailyLog, kpi: CRMKpi | null): number {
+  const metrics: { logKey: keyof typeof BASE_WEIGHTS; kpiKey: keyof CRMKpi }[] = [
+    { logKey: "calls_booked",      kpiKey: "booked_target"   },
+    { logKey: "calls_pitched",     kpiKey: "pitched_target"  },
+    { logKey: "replied",           kpiKey: "replied_target"  },
+    { logKey: "followup_messages", kpiKey: "followup_target" },
+    { logKey: "hours_worked",      kpiKey: "hours_target"    },
+    { logKey: "outbound_messages", kpiKey: "outbound_target" },
+  ];
+
+  let score = 0;
+  for (const { logKey, kpiKey } of metrics) {
+    const actual = Number(log[logKey] ?? 0);
+    const target = kpi ? Number(kpi[kpiKey] ?? 0) : 0;
+    score += actual * BASE_WEIGHTS[logKey] * achievementMultiplier(actual, target);
+  }
+  return Math.round(score * 10) / 10;
+}
+
+// KPI achievement per metric (for display)
+export type KpiStatus = { met: boolean; ratio: number; multiplier: number };
+
+export function getKpiStatus(log: DailyLog, kpi: CRMKpi): Record<string, KpiStatus> {
+  const pairs: [keyof DailyLog, keyof CRMKpi][] = [
+    ["outbound_messages", "outbound_target"],
+    ["followup_messages", "followup_target"],
+    ["calls_pitched",     "pitched_target" ],
+    ["calls_booked",      "booked_target"  ],
+    ["replied",           "replied_target" ],
+    ["hours_worked",      "hours_target"   ],
+  ];
+  const out: Record<string, KpiStatus> = {};
+  for (const [logKey, kpiKey] of pairs) {
+    const actual = Number(log[logKey] ?? 0);
+    const target = Number(kpi[kpiKey] ?? 0);
+    out[logKey] = {
+      met:        target > 0 ? actual >= target : false,
+      ratio:      target > 0 ? actual / target : 1,
+      multiplier: achievementMultiplier(actual, target),
+    };
+  }
+  return out;
+}
+
 const CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
 function generateShortCode(): string {
@@ -167,7 +241,6 @@ export type DailyLog = {
   replied: number;
   disqualified: number;
   hours_worked: number;
-  score: number;
   updated_at: string;
 };
 
@@ -195,6 +268,35 @@ export async function getTodayLog(userId: string): Promise<DailyLog | null> {
   return (data ?? null) as DailyLog | null;
 }
 
+// ── KPI queries ───────────────────────────────────────────────────
+
+export async function getTeamKpi(teamId: string): Promise<CRMKpi | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("crm_kpis")
+    .select("*")
+    .eq("team_id", teamId)
+    .maybeSingle();
+  return (data ?? null) as CRMKpi | null;
+}
+
+export async function upsertTeamKpi(
+  teamId: string,
+  createdBy: string,
+  targets: Omit<CRMKpi, "id" | "team_id" | "updated_at" | "created_by">
+): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("crm_kpis")
+    .upsert(
+      { ...targets, team_id: teamId, created_by: createdBy, updated_at: new Date().toISOString() },
+      { onConflict: "team_id" }
+    );
+  if (error) throw error;
+}
+
+// ── Leaderboard ───────────────────────────────────────────────────
+
 export type MemberStats = {
   user_id: string;
   full_name: string;
@@ -213,13 +315,13 @@ export type MemberStats = {
 
 export async function getTeamLeaderboard(
   teamId: string,
-  opts: { from?: string; to?: string } = {}
+  opts: { from?: string; to?: string; kpi?: CRMKpi | null } = {}
 ): Promise<MemberStats[]> {
   const admin = createAdminClient();
 
   let query = admin
     .from("crm_daily_logs")
-    .select("user_id, score, outbound_messages, followup_messages, calls_pitched, calls_booked, replied, disqualified, hours_worked, profiles:user_id ( full_name, email )")
+    .select("*, profiles:user_id ( full_name, email )")
     .eq("team_id", teamId);
 
   if (opts.from) query = query.gte("log_date", opts.from);
@@ -229,13 +331,14 @@ export async function getTeamLeaderboard(
   if (error) throw error;
 
   const rows = (data ?? []) as unknown as (DailyLog & { profiles: { full_name: string; email: string } | null })[];
+  const kpi  = opts.kpi ?? null;
 
-  // Aggregate per user
   const map = new Map<string, MemberStats>();
   for (const row of rows) {
+    const rowScore = computeScore(row, kpi);
     const existing = map.get(row.user_id);
     if (existing) {
-      existing.total_score        += Number(row.score);
+      existing.total_score        += rowScore;
       existing.total_outbound     += row.outbound_messages;
       existing.total_followup     += row.followup_messages;
       existing.total_pitched      += row.calls_pitched;
@@ -246,29 +349,30 @@ export async function getTeamLeaderboard(
       existing.days_logged        += 1;
     } else {
       map.set(row.user_id, {
-        user_id:           row.user_id,
-        full_name:         row.profiles?.full_name ?? row.profiles?.email ?? "Unknown",
-        email:             row.profiles?.email ?? "",
-        total_score:       Number(row.score),
-        total_outbound:    row.outbound_messages,
-        total_followup:    row.followup_messages,
-        total_pitched:     row.calls_pitched,
-        total_booked:      row.calls_booked,
-        total_replied:     row.replied,
+        user_id:            row.user_id,
+        full_name:          row.profiles?.full_name ?? row.profiles?.email ?? "Unknown",
+        email:              row.profiles?.email ?? "",
+        total_score:        rowScore,
+        total_outbound:     row.outbound_messages,
+        total_followup:     row.followup_messages,
+        total_pitched:      row.calls_pitched,
+        total_booked:       row.calls_booked,
+        total_replied:      row.replied,
         total_disqualified: row.disqualified,
-        total_hours:       Number(row.hours_worked),
-        days_logged:       1,
-        booking_rate:      0,
+        total_hours:        Number(row.hours_worked),
+        days_logged:        1,
+        booking_rate:       0,
       });
     }
   }
 
-  const results = Array.from(map.values()).map(m => ({
-    ...m,
-    booking_rate: m.total_pitched > 0 ? Math.round((m.total_booked / m.total_pitched) * 100) : 0,
-  }));
-
-  return results.sort((a, b) => b.total_score - a.total_score);
+  return Array.from(map.values())
+    .map(m => ({
+      ...m,
+      total_score:  Math.round(m.total_score * 10) / 10,
+      booking_rate: m.total_pitched > 0 ? Math.round((m.total_booked / m.total_pitched) * 100) : 0,
+    }))
+    .sort((a, b) => b.total_score - a.total_score);
 }
 
 export async function getTeamDailyLogs(
@@ -291,13 +395,15 @@ export async function getTeamDailyLogs(
   return (data ?? []) as unknown as (DailyLog & { profiles: { full_name: string; email: string } | null })[];
 }
 
-export async function getUserRankInTeam(userId: string, teamId: string): Promise<{ rank: number; total: number }> {
-  const admin = createAdminClient();
+export async function getUserRankInTeam(
+  userId: string,
+  teamId: string,
+  kpi: CRMKpi | null
+): Promise<{ rank: number; total: number }> {
   const monthStart = new Date();
   monthStart.setDate(1);
   const from = monthStart.toISOString().split("T")[0];
-
-  const leaderboard = await getTeamLeaderboard(teamId, { from });
+  const leaderboard = await getTeamLeaderboard(teamId, { from, kpi });
   const idx = leaderboard.findIndex(m => m.user_id === userId);
   return { rank: idx === -1 ? leaderboard.length + 1 : idx + 1, total: leaderboard.length };
 }
