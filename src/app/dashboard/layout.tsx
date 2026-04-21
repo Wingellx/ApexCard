@@ -51,6 +51,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         teamId={userTeam?.teamId ?? null}
         isIOmember={isIOmember}
         isTeamAdmin={teamRole === "admin"}
+        isCRMenabled={!!userTeam}
       />
       <div className="lg:ml-64 pt-14 lg:pt-0">
         {showUpgradeBanner && (

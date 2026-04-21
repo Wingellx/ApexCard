@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, PhoneCall, Target, History, Award,
-  Settings, LogOut, Menu, X, Trophy, User, Flame, Users, Zap, Shield, Dumbbell, BarChart3,
+  Settings, LogOut, Menu, X, Trophy, User, Flame, Users, Zap, Shield, Dumbbell, BarChart3, BookUser,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signout } from "@/app/auth/actions";
@@ -19,9 +19,10 @@ interface SidebarProps {
   teamId?: string | null;
   isIOmember?: boolean;
   isTeamAdmin?: boolean;
+  isCRMenabled?: boolean;
 }
 
-function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin?: boolean) {
+function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin?: boolean, isCRMenabled?: boolean) {
   return [
     {
       label: "Performance",
@@ -45,6 +46,13 @@ function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin
         ] : []),
       ],
     },
+    ...(isCRMenabled ? [{
+      label: "CRM",
+      items: [
+        { href: "/dashboard/crm",         label: "My CRM",      icon: BookUser },
+        ...(isTeamAdmin ? [{ href: "/dashboard/crm/manager", label: "Team View", icon: Shield }] : []),
+      ],
+    }] : []),
     ...(isIOmember ? [{
       label: "IO Community",
       items: [
@@ -64,8 +72,8 @@ function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin
   ];
 }
 
-export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId, isIOmember, isTeamAdmin }: SidebarProps) {
-  const sections = buildSections(teamId, isIOmember, isTeamAdmin);
+export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId, isIOmember, isTeamAdmin, isCRMenabled }: SidebarProps) {
+  const sections = buildSections(teamId, isIOmember, isTeamAdmin, isCRMenabled);
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 

@@ -7,11 +7,12 @@ import Button from "@/components/ui/Button";
 interface AuthFormProps {
   mode: "login" | "signup";
   action: (formData: FormData) => Promise<{ error: string } | void>;
+  nextUrl?: string;
 }
 
 const initialState = { error: "" };
 
-export default function AuthForm({ mode, action }: AuthFormProps) {
+export default function AuthForm({ mode, action, nextUrl }: AuthFormProps) {
   const [state, formAction, isPending] = useActionState(
     async (_prev: typeof initialState, formData: FormData) => {
       const result = await action(formData);
@@ -47,6 +48,7 @@ export default function AuthForm({ mode, action }: AuthFormProps) {
         {/* Card */}
         <div className="bg-[#111318] border border-[#1e2130] rounded-2xl p-8">
           <form action={formAction} className="space-y-5">
+            {nextUrl && <input type="hidden" name="next_url" value={nextUrl} />}
             {!isLogin && (
               <div>
                 <label htmlFor="full_name" className="block text-xs font-semibold text-[#6b7280] uppercase tracking-wider mb-2">

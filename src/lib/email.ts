@@ -1,28 +1,36 @@
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 
+function fmtDate(d: string) {
+  return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
 interface VerificationEmailProps {
-  managerName: string;
-  repName: string;
-  repEmail: string;
-  verifyUrl: string;
-  declineUrl: string;
+  managerName:    string;
+  repName:        string;
+  repEmail:       string;
+  verifyUrl:      string;
+  declineUrl:     string;
+  startDate:      string;
+  endDate:        string;
   stats: {
-    cash: number;
-    commission: number;
-    calls: number;
-    offersTaken: number;
-    showRate: number;
-    closeRate: number;
+    cash:         number;
+    commission:   number;
+    calls:        number;
+    offersTaken:  number;
+    showRate:     number;
+    closeRate:    number;
     cashPerClose: number;
-    daysLogged: number;
+    daysLogged:   number;
   };
 }
 
 export function buildVerificationEmail({
-  managerName, repName, repEmail, verifyUrl, declineUrl, stats,
+  managerName, repName, repEmail, verifyUrl, declineUrl,
+  startDate, endDate, stats,
 }: VerificationEmailProps): { subject: string; html: string } {
   const subject = `${repName} has requested you verify their sales performance`;
+  const periodLabel = `${fmtDate(startDate)} – ${fmtDate(endDate)}`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -49,24 +57,40 @@ export function buildVerificationEmail({
         <!-- Body -->
         <tr>
           <td style="background:#ffffff;padding:40px 32px;">
-            <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#6366f1;text-transform:uppercase;letter-spacing:1px;">Verification Request</p>
+            <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#6366f1;text-transform:uppercase;letter-spacing:1px;">Manager Verification Request</p>
             <h1 style="margin:0 0 16px;font-size:24px;font-weight:800;color:#0f172a;line-height:1.2;">
-              ${repName} wants you to verify their sales stats
+              ${repName} wants you to verify their sales performance
             </h1>
-            <p style="margin:0 0 32px;font-size:15px;color:#64748b;line-height:1.6;">
+            <p style="margin:0 0 8px;font-size:15px;color:#64748b;line-height:1.6;">
               Hi ${managerName}, <strong style="color:#0f172a;">${repName}</strong> (${repEmail}) has listed you as their manager
-              and is requesting a verification of their sales performance through ApexCard.
+              and is requesting verification of their sales performance through ApexCard.
             </p>
+            <p style="margin:0 0 32px;font-size:15px;color:#64748b;line-height:1.6;">
+              You are being asked to verify <strong style="color:#0f172a;">${repName}</strong>'s performance
+              from <strong style="color:#0f172a;">${fmtDate(startDate)}</strong> to <strong style="color:#0f172a;">${fmtDate(endDate)}</strong> only.
+            </p>
+
+            <!-- Date range badge -->
+            <table cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+              <tr>
+                <td style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 16px;">
+                  <p style="margin:0;font-size:13px;font-weight:600;color:#1d4ed8;">
+                    📅 Performance period: ${periodLabel}
+                  </p>
+                </td>
+              </tr>
+            </table>
 
             <!-- Stats card -->
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:32px;">
               <tr>
                 <td style="padding:24px;">
-                  <p style="margin:0 0 20px;font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Performance Summary</p>
+                  <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Performance Summary</p>
+                  <p style="margin:0 0 20px;font-size:11px;color:#94a3b8;">${periodLabel}</p>
                   <table width="100%" cellpadding="0" cellspacing="0">
                     <tr>
                       <td width="50%" style="padding-bottom:16px;vertical-align:top;">
-                        <p style="margin:0 0 2px;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;">Lifetime Cash</p>
+                        <p style="margin:0 0 2px;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;">Cash Collected</p>
                         <p style="margin:0;font-size:22px;font-weight:800;color:#10b981;">${fmt(stats.cash)}</p>
                       </td>
                       <td width="50%" style="padding-bottom:16px;vertical-align:top;">
@@ -90,8 +114,8 @@ export function buildVerificationEmail({
                         <p style="margin:0;font-size:18px;font-weight:700;color:#0f172a;">${stats.calls.toLocaleString()}</p>
                       </td>
                       <td width="50%" style="padding-bottom:4px;vertical-align:top;">
-                        <p style="margin:0 0 2px;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;">Days Logged</p>
-                        <p style="margin:0;font-size:18px;font-weight:700;color:#0f172a;">${stats.daysLogged}</p>
+                        <p style="margin:0 0 2px;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;">Deals Closed</p>
+                        <p style="margin:0;font-size:18px;font-weight:700;color:#0f172a;">${stats.offersTaken.toLocaleString()}</p>
                       </td>
                     </tr>
                   </table>
@@ -101,19 +125,19 @@ export function buildVerificationEmail({
 
             <!-- CTA -->
             <p style="margin:0 0 20px;font-size:14px;color:#64748b;line-height:1.6;">
-              If you managed ${repName} and can confirm these stats are accurate, click <strong>Verify</strong>.
-              If you don&apos;t recognise this request or the stats are inaccurate, click <strong>Decline</strong>.
+              If you managed ${repName} during this period and can confirm these stats are accurate, click <strong>Verify Stats</strong>.
+              If you don't recognise this request or the stats are inaccurate, click <strong>Decline</strong>.
             </p>
             <table cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
               <tr>
                 <td style="padding-right:12px;">
-                  <a href="${verifyUrl}" style="display:inline-block;background:#6366f1;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:10px;">
+                  <a href="${verifyUrl}" style="display:inline-block;background:#10b981;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:10px;">
                     ✓ Verify Stats
                   </a>
                 </td>
                 <td>
-                  <a href="${declineUrl}" style="display:inline-block;background:#f1f5f9;color:#64748b;font-size:15px;font-weight:600;text-decoration:none;padding:14px 28px;border-radius:10px;">
-                    Decline
+                  <a href="${declineUrl}" style="display:inline-block;background:#ef4444;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;padding:14px 28px;border-radius:10px;">
+                    ✗ Decline
                   </a>
                 </td>
               </tr>
@@ -128,7 +152,7 @@ export function buildVerificationEmail({
         <tr>
           <td style="background:#f8fafc;border-top:1px solid #e2e8f0;border-radius:0 0 12px 12px;padding:20px 32px;text-align:center;">
             <p style="margin:0;font-size:12px;color:#94a3b8;">
-              Sent by <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://apexcard.com"}" style="color:#6366f1;text-decoration:none;">ApexCard</a>
+              Sent by <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://apexcard.app"}" style="color:#6366f1;text-decoration:none;">ApexCard</a>
               · Your verified sales identity
             </p>
           </td>
