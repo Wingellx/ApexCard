@@ -14,6 +14,7 @@ import {
 } from "@/lib/queries";
 import ShortlistButton from "./ShortlistButton";
 import ProcessTiersButton from "./ProcessTiersButton";
+import CopyInviteButton from "@/components/owner/CopyInviteButton";
 import {
   Clock, Search, ExternalLink, ShieldCheck, Mail,
   Star, Users, Briefcase, BarChart3, Shield,
@@ -206,6 +207,7 @@ function TeamCard({ team }: { team: OwnerTeamRow }) {
           <span className="text-[11px] text-[#4b5563]">{DIVISION_LABELS[team.division] ?? team.division} division</span>
         </div>
       )}
+      <CopyInviteButton teamId={team.id} />
     </div>
   );
 }

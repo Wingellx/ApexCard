@@ -701,7 +701,7 @@ export type OwnerTeamRow = {
 export async function getAllTeamsForOwner(): Promise<OwnerTeamRow[]> {
   const admin = createAdminClient();
   const [{ data: teams }, { data: members }] = await Promise.all([
-    admin.from("teams").select("id, name, description, division, tier").order("name"),
+    admin.from("teams").select("id, name, description, division, tier, invite_code").order("name"),
     admin.from("team_members").select("team_id"),
   ]);
   if (!teams) return [];
