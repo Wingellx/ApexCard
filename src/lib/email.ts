@@ -1,7 +1,7 @@
 // ── Shared shell ─────────────────────────────────────────────────
 
 function emailShell(body: string): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://apexcard.app";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.apexcard.app";
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>

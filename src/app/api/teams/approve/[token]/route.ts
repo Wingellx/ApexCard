@@ -36,6 +36,6 @@ export async function GET(
     );
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://apexcard.app";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.apexcard.app";
   return NextResponse.redirect(`${appUrl}/dashboard/crm/manager`);
 }

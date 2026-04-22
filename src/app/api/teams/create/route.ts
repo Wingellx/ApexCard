@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     // Register manager in team_managers
     await admin.from("team_managers").insert({ user_id: user.id, team_id: team.id });
 
-    const appUrl    = process.env.NEXT_PUBLIC_APP_URL ?? "https://apexcard.app";
+    const appUrl    = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.apexcard.app";
     const approveUrl = `${appUrl}/api/teams/approve/${team.approve_token}`;
     const declineUrl = `${appUrl}/api/teams/decline/${team.decline_token}`;
 
