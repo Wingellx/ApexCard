@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildTeamApprovalEmail } from "@/lib/email";
+import { sendEmail } from "@/lib/resend";
 
 const OWNER_EMAIL = "jacobdw1508@gmail.com";
 
@@ -69,15 +69,9 @@ export async function POST(request: Request) {
       declineUrl,
     });
 
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const { error: emailError } = await resend.emails.send({
-      from:    process.env.RESEND_FROM_EMAIL ?? "ApexCard <verify@apexcard.app>",
-      to:      OWNER_EMAIL,
-      subject,
-      html,
-    });
-
-    if (emailError) {
+    try {
+      await sendEmail({ to: OWNER_EMAIL, subject, html });
+    } catch {
       await admin.from("teams").delete().eq("id", team.id);
       return NextResponse.json({ error: "Failed to send approval email." }, { status: 500 });
     }

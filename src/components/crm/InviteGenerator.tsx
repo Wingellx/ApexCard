@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Link2, Copy, Check, Plus, Clock, CheckCircle2 } from "lucide-react";
+import { Link2, Copy, Check, Plus, Clock, CheckCircle2, Mail } from "lucide-react";
 
 type Token = {
   id: string;
@@ -16,24 +16,36 @@ interface InviteGeneratorProps {
 }
 
 export default function InviteGenerator({ existingTokens }: InviteGeneratorProps) {
-  const [tokens, setTokens]       = useState<Token[]>(existingTokens);
-  const [loading, setLoading]     = useState(false);
-  const [error, setError]         = useState<string | null>(null);
-  const [copied, setCopied]       = useState<string | null>(null);
+  const [tokens, setTokens]   = useState<Token[]>(existingTokens);
+  const [email, setEmail]     = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+  const [copied, setCopied]   = useState<string | null>(null);
+  const [sent, setSent]       = useState(false);
 
   const appUrl = typeof window !== "undefined" ? window.location.origin : "";
 
-  async function handleGenerate() {
+  async function handleGenerate(e: React.FormEvent) {
+    e.preventDefault();
     setLoading(true);
     setError(null);
+    setSent(false);
     try {
-      const res  = await fetch("/api/crm/invite", { method: "POST" });
+      const body: Record<string, string> = {};
+      if (email.trim() && email.includes("@")) body.email = email.trim();
+
+      const res  = await fetch("/api/crm/invite", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(body),
+      });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Failed to generate token."); return; }
       setTokens(prev => [
         { id: crypto.randomUUID(), token: data.token, expires_at: data.expires_at, used_at: null, created_at: new Date().toISOString() },
         ...prev,
       ]);
+      if (email.trim()) { setSent(true); setEmail(""); }
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -56,20 +68,37 @@ export default function InviteGenerator({ existingTokens }: InviteGeneratorProps
 
   return (
     <div className="bg-[#111318] border border-[#1e2130] rounded-2xl p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Link2 className="w-4 h-4 text-indigo-400" />
-          <h2 className="text-sm font-semibold text-[#f0f2f8]">Invite Members</h2>
+      <div className="flex items-center gap-2">
+        <Link2 className="w-4 h-4 text-indigo-400" />
+        <h2 className="text-sm font-semibold text-[#f0f2f8]">Invite Members</h2>
+      </div>
+
+      <form onSubmit={handleGenerate} className="flex gap-2">
+        <div className="relative flex-1">
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#374151]" />
+          <input
+            type="email"
+            value={email}
+            onChange={e => { setEmail(e.target.value); setSent(false); }}
+            placeholder="invitee@email.com (optional)"
+            className="w-full bg-[#0d0f15] border border-[#1e2130] rounded-lg pl-8 pr-3 py-2 text-sm text-[#f0f2f8] placeholder-[#374151] focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+          />
         </div>
         <button
-          onClick={handleGenerate}
+          type="submit"
           disabled={loading}
-          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 transition-colors disabled:opacity-50 shrink-0"
         >
           <Plus className="w-3.5 h-3.5" />
-          {loading ? "Generating…" : "New invite"}
+          {loading ? "Sending…" : email.trim() ? "Send invite" : "New invite"}
         </button>
-      </div>
+      </form>
+
+      {sent && (
+        <div className="flex items-center gap-2 text-emerald-400 text-xs">
+          <CheckCircle2 className="w-3.5 h-3.5" /> Invite email sent.
+        </div>
+      )}
 
       {error && (
         <div className="bg-rose-500/10 border border-rose-500/20 rounded-lg px-4 py-3">

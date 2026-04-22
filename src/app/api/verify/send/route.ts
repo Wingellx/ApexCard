@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildVerificationEmail } from "@/lib/email";
+import { sendEmail } from "@/lib/resend";
 
 export async function POST(request: Request) {
   try {
@@ -112,15 +112,9 @@ export async function POST(request: Request) {
       },
     });
 
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    const { error: emailError } = await resend.emails.send({
-      from:    process.env.RESEND_FROM_EMAIL ?? "ApexCard <verify@apexcard.app>",
-      to:      managerEmail.trim(),
-      subject,
-      html,
-    });
-
-    if (emailError) {
+    try {
+      await sendEmail({ to: managerEmail.trim(), subject, html });
+    } catch {
       await admin.from("verification_requests").delete().eq("verify_token", req.verify_token);
       return NextResponse.json({ error: "Failed to send email. Check your Resend config." }, { status: 500 });
     }
