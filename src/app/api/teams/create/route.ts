@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { buildTeamApprovalEmail } from "@/lib/email";
 import { sendEmail } from "@/lib/resend";
 
-const OWNER_EMAIL = "jacobdw1508@gmail.com";
+const OWNER_EMAIL = "wingell@apexcard.app";
 
 export async function POST(request: Request) {
   try {
