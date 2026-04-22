@@ -694,27 +694,132 @@ export type OwnerTeamRow = {
   name:        string;
   description: string | null;
   memberCount: number;
+  subTeamCount: number;
   division:    string | null;
   tier:        number | null;
+  status:      string | null;
 };
 
+export type OwnerTeamMember = {
+  userId:   string;
+  name:     string | null;
+  username: string | null;
+  role:     string | null;
+  teamRole: "admin" | "member";
+};
+
+export type OwnerSubTeam = {
+  id:          string;
+  name:        string;
+  description: string | null;
+  memberCount: number;
+  status:      string | null;
+};
+
+export type OwnerTeamDetail = {
+  id:          string;
+  name:        string;
+  description: string | null;
+  division:    string | null;
+  tier:        number | null;
+  status:      string | null;
+  parentId:    string | null;
+  parentName:  string | null;
+  memberCount: number;
+  members:     OwnerTeamMember[];
+  subTeams:    OwnerSubTeam[];
+};
+
+// Only returns top-level teams (no parent)
 export async function getAllTeamsForOwner(): Promise<OwnerTeamRow[]> {
   const admin = createAdminClient();
   const [{ data: teams }, { data: members }] = await Promise.all([
-    admin.from("teams").select("id, name, description, division, tier, invite_code").order("name"),
+    admin.from("teams").select("id, name, description, division, tier, status, parent_team_id").order("name"),
     admin.from("team_members").select("team_id"),
   ]);
   if (!teams) return [];
   const counts = new Map<string, number>();
   for (const m of members ?? []) counts.set(m.team_id, (counts.get(m.team_id) ?? 0) + 1);
-  return teams.map((t) => ({
-    id:          t.id          as string,
-    name:        t.name        as string,
-    description: t.description as string | null,
-    memberCount: counts.get(t.id as string) ?? 0,
-    division:    t.division    as string | null,
-    tier:        t.tier        as number | null,
-  }));
+
+  const subTeamCounts = new Map<string, number>();
+  for (const t of teams) {
+    if (t.parent_team_id) {
+      subTeamCounts.set(t.parent_team_id as string, (subTeamCounts.get(t.parent_team_id as string) ?? 0) + 1);
+    }
+  }
+
+  return teams
+    .filter((t) => !t.parent_team_id)
+    .map((t) => ({
+      id:           t.id          as string,
+      name:         t.name        as string,
+      description:  t.description as string | null,
+      memberCount:  counts.get(t.id as string) ?? 0,
+      subTeamCount: subTeamCounts.get(t.id as string) ?? 0,
+      division:     t.division    as string | null,
+      tier:         t.tier        as number | null,
+      status:       t.status      as string | null,
+    }));
+}
+
+export async function getOwnerTeamDetail(teamId: string): Promise<OwnerTeamDetail | null> {
+  const admin = createAdminClient();
+
+  const [{ data: team }, { data: rawMembers }, { data: subTeams }, { data: subMembers }] = await Promise.all([
+    admin.from("teams").select("id, name, description, division, tier, status, parent_team_id, teams!parent_team_id(id,name)").eq("id", teamId).maybeSingle(),
+    admin.from("team_members").select("user_id, role, profiles(full_name, username, role)").eq("team_id", teamId),
+    admin.from("teams").select("id, name, description, status").eq("parent_team_id", teamId).order("name"),
+    admin.from("team_members").select("team_id"),
+  ]);
+
+  if (!team) return null;
+
+  const subCounts = new Map<string, number>();
+  for (const m of subMembers ?? []) subCounts.set(m.team_id, (subCounts.get(m.team_id) ?? 0) + 1);
+
+  const parent = (team as unknown as { teams: { id: string; name: string } | null }).teams;
+
+  const members: OwnerTeamMember[] = (rawMembers ?? []).map((m: unknown) => {
+    const row = m as { user_id: string; role: string; profiles: { full_name: string | null; username: string | null; role: string | null } | null };
+    return {
+      userId:   row.user_id,
+      name:     row.profiles?.full_name ?? null,
+      username: row.profiles?.username  ?? null,
+      role:     row.profiles?.role      ?? null,
+      teamRole: (row.role as "admin" | "member") ?? "member",
+    };
+  });
+
+  members.sort((a, b) => {
+    if (a.teamRole === "admin" && b.teamRole !== "admin") return -1;
+    if (b.teamRole === "admin" && a.teamRole !== "admin") return 1;
+    return (a.name ?? "").localeCompare(b.name ?? "");
+  });
+
+  const subs: OwnerSubTeam[] = (subTeams ?? []).map((s: unknown) => {
+    const row = s as { id: string; name: string; description: string | null; status: string | null };
+    return {
+      id:          row.id,
+      name:        row.name,
+      description: row.description,
+      memberCount: subCounts.get(row.id) ?? 0,
+      status:      row.status,
+    };
+  });
+
+  return {
+    id:          team.id          as string,
+    name:        team.name        as string,
+    description: team.description as string | null,
+    division:    team.division    as string | null,
+    tier:        team.tier        as number | null,
+    status:      team.status      as string | null,
+    parentId:    parent?.id   ?? null,
+    parentName:  parent?.name ?? null,
+    memberCount: members.length,
+    members,
+    subTeams: subs,
+  };
 }
 
 export async function getDiscoverableReps(search?: string): Promise<DiscoverableRep[]> {

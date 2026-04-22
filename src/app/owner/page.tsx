@@ -14,10 +14,9 @@ import {
 } from "@/lib/queries";
 import ShortlistButton from "./ShortlistButton";
 import ProcessTiersButton from "./ProcessTiersButton";
-import CopyInviteButton from "@/components/owner/CopyInviteButton";
 import {
   Clock, Search, ExternalLink, ShieldCheck, Mail,
-  Star, Users, Briefcase, BarChart3, Shield,
+  Star, Users, Briefcase, BarChart3, Shield, ChevronRight,
 } from "lucide-react";
 
 const fmt    = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -181,22 +180,31 @@ const DIVISION_LABELS: Record<string, string> = {
 
 function TeamCard({ team }: { team: OwnerTeamRow }) {
   return (
-    <div className="bg-[#0f1117] border border-[#1e2130] rounded-2xl p-5 flex flex-col gap-3">
+    <Link
+      href={`/owner/team/${team.id}`}
+      className="group bg-[#0f1117] border border-[#1e2130] hover:border-indigo-500/30 rounded-2xl p-5 flex flex-col gap-3 transition-colors"
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500/20 to-violet-500/20 border border-indigo-500/20 flex items-center justify-center shrink-0">
             <Shield className="w-4 h-4 text-indigo-400" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-[#f0f2f8] truncate">{team.name}</p>
-            <p className="text-[11px] text-[#4b5563] mt-0.5">{team.memberCount} member{team.memberCount !== 1 ? "s" : ""}</p>
+            <p className="text-sm font-bold text-[#f0f2f8] truncate group-hover:text-indigo-300 transition-colors">{team.name}</p>
+            <p className="text-[11px] text-[#4b5563] mt-0.5">
+              {team.memberCount} member{team.memberCount !== 1 ? "s" : ""}
+              {team.subTeamCount > 0 && ` · ${team.subTeamCount} sub-team${team.subTeamCount !== 1 ? "s" : ""}`}
+            </p>
           </div>
         </div>
-        {team.tier && (
-          <span className="text-[10px] font-bold text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded-full shrink-0">
-            {TIER_LABELS[team.tier] ?? `Tier ${team.tier}`}
-          </span>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {team.tier && (
+            <span className="text-[10px] font-bold text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded-full">
+              {TIER_LABELS[team.tier] ?? `Tier ${team.tier}`}
+            </span>
+          )}
+          <ChevronRight className="w-4 h-4 text-[#374151] group-hover:text-indigo-400 transition-colors" />
+        </div>
       </div>
       {team.description && (
         <p className="text-xs text-[#6b7280] leading-relaxed line-clamp-2">{team.description}</p>
@@ -207,8 +215,7 @@ function TeamCard({ team }: { team: OwnerTeamRow }) {
           <span className="text-[11px] text-[#4b5563]">{DIVISION_LABELS[team.division] ?? team.division} division</span>
         </div>
       )}
-      <CopyInviteButton teamId={team.id} />
-    </div>
+    </Link>
   );
 }
 
