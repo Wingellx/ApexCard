@@ -6,10 +6,12 @@ import { getIsIOmember } from "@/lib/io-queries";
 import Sidebar from "@/components/dashboard/Sidebar";
 
 const ROLE_LABELS: Record<string, string> = {
-  closer:   "Closer",
-  setter:   "Appointment Setter",
-  operator: "Growth Operator",
-  manager:  "Sales Manager",
+  closer:        "Closer",
+  setter:        "Appointment Setter",
+  operator:      "Growth Operator",
+  manager:       "Sales Manager",
+  sales_manager: "Sales Manager",
+  offer_owner:   "Offer Owner",
 };
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {

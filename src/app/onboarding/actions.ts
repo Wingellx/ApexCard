@@ -37,7 +37,7 @@ export async function saveOnboardingProfile(
     if (taken) return { error: "That username is already taken. Try another." };
   }
 
-  const validRoles = ["closer", "setter", "operator", "manager"];
+  const validRoles = ["closer", "setter", "operator", "manager", "sales_manager", "offer_owner"];
   const { error } = await supabase
     .from("profiles")
     .update({
@@ -121,10 +121,10 @@ export async function saveOwnerVerificationRequest(
   if (!company_name)      return { error: "Company name is required." };
   if (!offer_description) return { error: "Offer description is required." };
 
-  // Save full_name and account_type to profile
+  // Save full_name, role, and account_type to profile
   const { error: profileErr } = await supabase
     .from("profiles")
-    .update({ full_name, account_type: "owner" })
+    .update({ full_name, role: "offer_owner", account_type: "owner" })
     .eq("id", user.id);
   if (profileErr) return { error: profileErr.message };
 

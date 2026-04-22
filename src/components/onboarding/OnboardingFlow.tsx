@@ -17,10 +17,10 @@ import {
 import { Activity, CalendarDays } from "lucide-react";
 
 const ROLES = [
-  { value: "closer",   label: "Closer"             },
-  { value: "setter",   label: "Appointment Setter" },
-  { value: "operator", label: "Growth Operator"    },
-  { value: "manager",  label: "Sales Manager"      },
+  { value: "closer",        label: "Closer"             },
+  { value: "setter",        label: "Appointment Setter" },
+  { value: "operator",      label: "Growth Operator"    },
+  { value: "sales_manager", label: "Sales Manager"      },
 ];
 
 // ── Progress dots (dynamic count) ────────────────────────────
