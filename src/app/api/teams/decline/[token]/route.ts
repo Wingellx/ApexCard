@@ -10,7 +10,7 @@ export async function GET(
 
   const { data: team, error } = await admin
     .from("teams")
-    .update({ status: "suspended" })
+    .update({ status: "declined" })
     .eq("decline_token", token)
     .eq("status", "pending")
     .select("name")
@@ -33,4 +33,5 @@ export async function GET(
     </body></html>`,
     { headers: { "Content-Type": "text/html" } }
   );
+
 }

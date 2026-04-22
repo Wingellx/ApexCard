@@ -26,11 +26,6 @@ export async function GET(
     );
   }
 
-  return new NextResponse(
-    `<html><body style="font-family:sans-serif;padding:40px;text-align:center;">
-      <h2 style="color:#10b981;">✓ Team approved</h2>
-      <p style="color:#64748b;font-size:18px;"><strong>${team.name}</strong> is now active.</p>
-    </body></html>`,
-    { headers: { "Content-Type": "text/html" } }
-  );
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://apexcard.app";
+  return NextResponse.redirect(`${appUrl}/dashboard/crm/manager`);
 }
