@@ -59,7 +59,7 @@ export default async function CRMTeamPage({
 
   const [kpi, tokens] = await Promise.all([
     getTeamKpi(teamId),
-    getManagerInviteTokens(user.id),
+    getManagerInviteTokens(user.id, teamId),
   ]);
 
   const [leaderboard, logs] = await Promise.all([
@@ -109,7 +109,7 @@ export default async function CRMTeamPage({
       </div>
 
       <KPIForm kpi={kpi} teamId={teamId} />
-      <InviteGenerator existingTokens={tokens} />
+      <InviteGenerator existingTokens={tokens} teamId={teamId} />
 
       {/* Date filter */}
       <form method="GET" className="flex flex-wrap items-end gap-3 bg-[#111318] border border-[#1e2130] rounded-2xl p-4">

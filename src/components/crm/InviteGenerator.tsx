@@ -13,9 +13,10 @@ type Token = {
 
 interface InviteGeneratorProps {
   existingTokens: Token[];
+  teamId?: string;
 }
 
-export default function InviteGenerator({ existingTokens }: InviteGeneratorProps) {
+export default function InviteGenerator({ existingTokens, teamId }: InviteGeneratorProps) {
   const [tokens, setTokens]   = useState<Token[]>(existingTokens);
   const [email, setEmail]     = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,6 +34,7 @@ export default function InviteGenerator({ existingTokens }: InviteGeneratorProps
     try {
       const body: Record<string, string> = {};
       if (email.trim() && email.includes("@")) body.email = email.trim();
+      if (teamId) body.teamId = teamId;
 
       const res  = await fetch("/api/crm/invite", {
         method:  "POST",

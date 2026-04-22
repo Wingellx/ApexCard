@@ -160,18 +160,23 @@ export async function redeemInviteToken(token: string, userId: string) {
   return { teamId: invite.team_id };
 }
 
-export async function getManagerInviteTokens(managerId: string) {
+export async function getManagerInviteTokens(managerId: string, teamId?: string) {
   const admin = createAdminClient();
-  const { data } = await admin
+  let query = admin
     .from("crm_invite_tokens")
-    .select("id, token, expires_at, used_at, created_at")
+    .select("id, token, team_id, expires_at, used_at, created_at")
     .eq("created_by", managerId)
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(20);
+
+  if (teamId) query = query.eq("team_id", teamId);
+
+  const { data } = await query;
 
   return (data ?? []) as {
     id: string;
     token: string;
+    team_id: string;
     expires_at: string;
     used_at: string | null;
     created_at: string;
