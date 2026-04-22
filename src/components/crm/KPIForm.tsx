@@ -20,9 +20,9 @@ const FIELDS: { key: string; label: string; decimal?: boolean }[] = [
   { key: "hours_target",    label: "Hours", decimal: true },
 ];
 
-interface Props { kpi: CRMKpi | null }
+interface Props { kpi: CRMKpi | null; teamId?: string }
 
-export default function KPIForm({ kpi }: Props) {
+export default function KPIForm({ kpi, teamId }: Props) {
   const [state, formAction, isPending] = useActionState(saveKPIs, null);
   const [open, setOpen] = useState(!kpi);
 
@@ -58,6 +58,7 @@ export default function KPIForm({ kpi }: Props) {
           )}
 
           <form action={formAction} className="space-y-4">
+            {teamId && <input type="hidden" name="team_id" value={teamId} />}
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
               {FIELDS.map(f => (
                 <div key={f.key}>

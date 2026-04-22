@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getUserTeam, getUserTeamRole } from "@/lib/queries";
 import { upsertTeamKpi } from "@/lib/crm-queries";
 
@@ -13,11 +14,26 @@ export async function saveKPIs(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Unauthorized." };
 
-  const [role, userTeam] = await Promise.all([
-    getUserTeamRole(user.id),
-    getUserTeam(user.id),
-  ]);
-  if (role !== "admin" || !userTeam) return { error: "Only managers can set KPIs." };
+  const role = await getUserTeamRole(user.id);
+  if (role !== "admin") return { error: "Only managers can set KPIs." };
+
+  const formTeamId = formData.get("team_id") as string | null;
+
+  let teamId: string;
+  if (formTeamId) {
+    // Verify the user actually manages this team
+    const admin = createAdminClient();
+    const [memberRes, managerRes] = await Promise.all([
+      admin.from("team_members").select("team_id").eq("user_id", user.id).eq("team_id", formTeamId).eq("role", "admin").maybeSingle(),
+      admin.from("team_managers").select("team_id").eq("user_id", user.id).eq("team_id", formTeamId).maybeSingle(),
+    ]);
+    if (!memberRes.data && !managerRes.data) return { error: "You do not manage this team." };
+    teamId = formTeamId;
+  } else {
+    const userTeam = await getUserTeam(user.id);
+    if (!userTeam) return { error: "Could not find your team." };
+    teamId = userTeam.teamId;
+  }
 
   function int(key: string) {
     const v = parseInt(formData.get(key) as string ?? "0", 10);
@@ -29,7 +45,7 @@ export async function saveKPIs(
   }
 
   try {
-    await upsertTeamKpi(userTeam.teamId, user.id, {
+    await upsertTeamKpi(teamId, user.id, {
       outbound_target: int("outbound_target"),
       followup_target: int("followup_target"),
       pitched_target:  int("pitched_target"),
@@ -42,5 +58,6 @@ export async function saveKPIs(
   }
 
   revalidatePath("/dashboard/crm/manager");
+  revalidatePath(`/dashboard/crm/manager/${teamId}`);
   return { success: true };
 }

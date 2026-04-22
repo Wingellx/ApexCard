@@ -395,6 +395,70 @@ export async function getTeamDailyLogs(
   return (data ?? []) as unknown as (DailyLog & { profiles: { full_name: string; email: string } | null })[];
 }
 
+export type ManagedTeam = {
+  id: string;
+  name: string;
+  status: "pending" | "active" | "suspended";
+  parent_team_id: string | null;
+  member_count: number;
+  is_primary: boolean;
+};
+
+export async function getManagedTeams(userId: string): Promise<ManagedTeam[]> {
+  const admin = createAdminClient();
+
+  const [primaryRes, managedRes] = await Promise.all([
+    admin
+      .from("team_members")
+      .select("team_id, teams(id, name, status, parent_team_id)")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle(),
+    admin
+      .from("team_managers")
+      .select("team_id, teams(id, name, status, parent_team_id)")
+      .eq("user_id", userId),
+  ]);
+
+  const teamIds: string[] = [];
+  const teams: { id: string; name: string; status: string; parent_team_id: string | null; is_primary: boolean }[] = [];
+
+  if (primaryRes.data?.teams) {
+    const t = primaryRes.data.teams as unknown as { id: string; name: string; status: string | null; parent_team_id: string | null };
+    teams.push({ id: t.id, name: t.name, status: t.status ?? "active", parent_team_id: t.parent_team_id, is_primary: true });
+    teamIds.push(t.id);
+  }
+
+  for (const row of (managedRes.data ?? [])) {
+    const t = row.teams as unknown as { id: string; name: string; status: string | null; parent_team_id: string | null };
+    if (!teamIds.includes(t.id)) {
+      teams.push({ id: t.id, name: t.name, status: t.status ?? "active", parent_team_id: t.parent_team_id, is_primary: false });
+      teamIds.push(t.id);
+    }
+  }
+
+  if (teamIds.length === 0) return [];
+
+  const { data: memberCounts } = await admin
+    .from("team_members")
+    .select("team_id")
+    .in("team_id", teamIds);
+
+  const counts = new Map<string, number>();
+  for (const row of (memberCounts ?? [])) {
+    counts.set(row.team_id, (counts.get(row.team_id) ?? 0) + 1);
+  }
+
+  return teams.map(t => ({
+    id: t.id,
+    name: t.name,
+    status: (t.status ?? "active") as "pending" | "active" | "suspended",
+    parent_team_id: t.parent_team_id,
+    member_count: counts.get(t.id) ?? 0,
+    is_primary: t.is_primary,
+  }));
+}
+
 export async function getUserRankInTeam(
   userId: string,
   teamId: string,

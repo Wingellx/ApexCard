@@ -1,3 +1,77 @@
+export function buildTeamApprovalEmail({
+  managerName,
+  teamName,
+  parentTeamName,
+  approveUrl,
+  declineUrl,
+}: {
+  managerName:    string;
+  teamName:       string;
+  parentTeamName: string;
+  approveUrl:     string;
+  declineUrl:     string;
+}): { subject: string; html: string } {
+  const subject = `${managerName} wants to create a new team: "${teamName}"`;
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${subject}</title></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+        <tr>
+          <td style="background:#111318;border-radius:12px 12px 0 0;padding:24px 32px;">
+            <table cellpadding="0" cellspacing="0"><tr>
+              <td style="width:32px;height:32px;background:#6366f1;border-radius:8px;text-align:center;vertical-align:middle;">
+                <span style="color:#fff;font-size:16px;font-weight:700;line-height:32px;">↗</span>
+              </td>
+              <td style="padding-left:10px;color:#f0f2f8;font-size:18px;font-weight:700;vertical-align:middle;">ApexCard</td>
+            </tr></table>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#fff;padding:40px 32px;">
+            <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#6366f1;text-transform:uppercase;letter-spacing:1px;">New Team Request</p>
+            <h1 style="margin:0 0 16px;font-size:24px;font-weight:800;color:#0f172a;line-height:1.2;">Team creation approval needed</h1>
+            <p style="margin:0 0 24px;font-size:15px;color:#64748b;line-height:1.6;">
+              <strong style="color:#0f172a;">${managerName}</strong> wants to create a new sub-team under
+              <strong style="color:#0f172a;">${parentTeamName}</strong>.
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:32px;">
+              <tr><td style="padding:20px 24px;">
+                <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Team Name</p>
+                <p style="margin:0;font-size:20px;font-weight:800;color:#0f172a;">${teamName}</p>
+                <p style="margin:8px 0 0;font-size:13px;color:#64748b;">Under: ${parentTeamName}</p>
+              </td></tr>
+            </table>
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding-right:12px;">
+                  <a href="${approveUrl}" style="display:inline-block;background:#10b981;color:#fff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:10px;">✓ Approve</a>
+                </td>
+                <td>
+                  <a href="${declineUrl}" style="display:inline-block;background:#ef4444;color:#fff;font-size:15px;font-weight:600;text-decoration:none;padding:14px 28px;border-radius:10px;">✗ Decline</a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:24px 0 0;font-size:12px;color:#94a3b8;">These links are one-use only. If you did not expect this email you can ignore it.</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f8fafc;border-top:1px solid #e2e8f0;border-radius:0 0 12px 12px;padding:20px 32px;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#94a3b8;">
+              Sent by <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://apexcard.app"}" style="color:#6366f1;text-decoration:none;">ApexCard</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  return { subject, html };
+}
+
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 
