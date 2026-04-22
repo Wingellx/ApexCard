@@ -92,7 +92,10 @@ export async function createInviteToken(teamId: string, createdBy: string) {
     .select("token, expires_at")
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error("[createInviteToken] insert error:", JSON.stringify(error), "teamId:", teamId, "createdBy:", createdBy);
+    throw error;
+  }
   return data as { token: string; expires_at: string };
 }
 

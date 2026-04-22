@@ -11,14 +11,17 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    console.log("[crm/invite] user:", user.id);
 
     const role = await getUserTeamRole(user.id);
+    console.log("[crm/invite] role:", role);
     if (role !== "admin") {
       return NextResponse.json({ error: "Only team managers can generate invite tokens." }, { status: 403 });
     }
 
     const body: { email?: string; teamId?: string } = await request.json().catch(() => ({}));
     const inviteeEmail = typeof body.email === "string" && body.email.includes("@") ? body.email.trim() : null;
+    console.log("[crm/invite] body.teamId:", body.teamId, "inviteeEmail:", inviteeEmail);
 
     let teamId: string;
     let teamName: string;
@@ -30,10 +33,12 @@ export async function POST(request: Request) {
         admin.from("team_members").select("team_id").eq("user_id", user.id).eq("team_id", body.teamId).eq("role", "admin").maybeSingle(),
         admin.from("team_managers").select("team_id").eq("user_id", user.id).eq("team_id", body.teamId).maybeSingle(),
       ]);
+      console.log("[crm/invite] memberRes:", memberRes.data, "managerRes:", managerRes.data);
       if (!memberRes.data && !managerRes.data) {
         return NextResponse.json({ error: "You do not manage this team." }, { status: 403 });
       }
-      const { data: teamRow } = await admin.from("teams").select("name").eq("id", body.teamId).maybeSingle();
+      const { data: teamRow, error: teamErr } = await admin.from("teams").select("name").eq("id", body.teamId).maybeSingle();
+      console.log("[crm/invite] teamRow:", teamRow, "teamErr:", JSON.stringify(teamErr));
       if (!teamRow) return NextResponse.json({ error: "Team not found." }, { status: 404 });
       teamId   = body.teamId;
       teamName = teamRow.name as string;
@@ -44,7 +49,9 @@ export async function POST(request: Request) {
       teamName = userTeam.team.name;
     }
 
+    console.log("[crm/invite] inserting token for teamId:", teamId);
     const { token, expires_at } = await createInviteToken(teamId, user.id);
+    console.log("[crm/invite] token created:", token);
     const appUrl  = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.apexcard.app";
     const joinUrl = `${appUrl}/join/crm/${token}`;
 

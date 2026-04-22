@@ -543,10 +543,11 @@ export async function getUserTeamRole(userId: string): Promise<"admin" | "member
   const admin = createAdminClient();
   const { data } = await admin
     .from("team_members")
-    .select("user_id, role");
-  const row = (data ?? []).find((r: { user_id: string; role: string }) => r.user_id === userId);
-  if (!row) return null;
-  return (row.role as "admin" | "member") ?? "member";
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!data) return null;
+  return (data.role as "admin" | "member") ?? "member";
 }
 
 export interface AdminMemberRow {
