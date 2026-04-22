@@ -119,7 +119,6 @@ export async function saveOwnerVerificationRequest(
 
   if (!full_name)         return { error: "Full name is required." };
   if (!company_name)      return { error: "Company name is required." };
-  if (!company_website)   return { error: "Company website is required." };
   if (!offer_description) return { error: "Offer description is required." };
 
   // Save full_name and account_type to profile
@@ -134,7 +133,7 @@ export async function saveOwnerVerificationRequest(
   const { error: reqErr } = await admin
     .from("owner_verification_requests")
     .upsert(
-      { user_id: user.id, full_name, company_name, company_website, offer_description, status: "pending" },
+      { user_id: user.id, full_name, company_name, company_website: company_website || null, offer_description, status: "pending" },
       { onConflict: "user_id" }
     );
   if (reqErr) return { error: reqErr.message };

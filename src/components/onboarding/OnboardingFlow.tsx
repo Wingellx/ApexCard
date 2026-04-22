@@ -427,8 +427,8 @@ function StepOwnerProfile({ onNext }: { onNext: () => void }) {
           <input name="company_name" type="text" placeholder="Apex Sales Inc." required className={inputClass} />
         </div>
         <div>
-          <label className={labelClass}>Company website</label>
-          <input name="company_website" type="url" placeholder="https://yourcompany.com" required className={inputClass} />
+          <label className={labelClass}>Company website <span className="text-[#374151] normal-case font-normal">(optional)</span></label>
+          <input name="company_website" type="url" placeholder="https://yourcompany.com" className={inputClass} />
         </div>
         <div>
           <label className={labelClass}>Describe your offer or team</label>
