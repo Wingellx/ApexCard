@@ -1,11 +1,15 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getWaitlistCount } from "@/app/actions/waitlist";
 import WaitlistForm from "@/components/marketing/WaitlistForm";
+import { createClient } from "@/lib/supabase/server";
 import { BarChart3, PhoneCall, Shield, TrendingUp } from "lucide-react";
 
-export const revalidate = 60;
-
 export default async function WaitlistPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) redirect("/dashboard");
+
   const count = await getWaitlistCount();
 
   return (
