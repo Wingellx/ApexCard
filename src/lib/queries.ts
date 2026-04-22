@@ -342,11 +342,33 @@ export async function getPublicLifetimeStats(userId: string) {
       .eq("id", userId)
       .maybeSingle(),
   ]);
-  if (logsErr)   console.error("[getPublicLifetimeStats] logs error for userId=%s:", userId, logsErr.message);
-  if (profileErr) console.error("[getPublicLifetimeStats] profile error for userId=%s:", userId, profileErr.message);
-  console.log("[getPublicLifetimeStats] userId=%s profile=%s logs=%s", userId, profile ? "found" : "null", logs?.length ?? "null");
+  if (logsErr) console.error("[getPublicLifetimeStats] logs error for userId=%s:", userId, logsErr.message);
 
-  if (!profile) return null;
+  // If the full query errored (e.g. column not yet in production), fall back to
+  // a minimal query so a missing migration doesn't produce a spurious 404.
+  type ProfileShape = {
+    full_name: string | null;
+    email: string | null;
+    is_verified: boolean | null;
+    verified_by_name: string | null;
+    verified_by_company: string | null;
+    username: string | null;
+    role: string | null;
+  };
+  let resolvedProfile: ProfileShape | null = profile as ProfileShape | null;
+  if (profileErr) {
+    console.error("[getPublicLifetimeStats] profile error for userId=%s:", userId, profileErr.message);
+    const { data: fallback } = await admin
+      .from("profiles")
+      .select("full_name, email, username, role")
+      .eq("id", userId)
+      .maybeSingle();
+    resolvedProfile = fallback
+      ? { full_name: fallback.full_name, email: fallback.email, username: fallback.username, role: fallback.role, is_verified: false, verified_by_name: null, verified_by_company: null }
+      : null;
+  }
+
+  if (!resolvedProfile) return null;
 
   const totals = (logs ?? []).reduce(
     (a, r) => ({
@@ -365,12 +387,12 @@ export async function getPublicLifetimeStats(userId: string) {
   const cashPerClose = totals.offersTaken  > 0 ?  totals.cash        / totals.offersTaken        : 0;
   const bestDay      = logs && logs.length > 0 ? Math.max(...logs.map((r) => Number(r.cash_collected ?? 0))) : 0;
   const daysLogged   = logs?.length ?? 0;
-  const name            = profile?.full_name?.trim() || profile?.email?.split("@")[0] || "Sales Pro";
-  const isVerified        = profile?.is_verified        ?? false;
-  const verifiedByName    = profile?.verified_by_name    ?? null;
-  const verifiedByCompany = profile?.verified_by_company ?? null;
-  const username          = profile?.username             ?? null;
-  const role              = profile?.role                 ?? null;
+  const name            = resolvedProfile.full_name?.trim() || resolvedProfile.email?.split("@")[0] || "Sales Pro";
+  const isVerified        = resolvedProfile.is_verified        ?? false;
+  const verifiedByName    = resolvedProfile.verified_by_name    ?? null;
+  const verifiedByCompany = resolvedProfile.verified_by_company ?? null;
+  const username          = resolvedProfile.username            ?? null;
+  const role              = resolvedProfile.role                ?? null;
   const sortedDates       = [...(logs ?? []).map((r) => r.date as string)].sort().reverse();
   const streak            = calculateStreak(sortedDates);
 
