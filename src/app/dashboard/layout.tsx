@@ -52,6 +52,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const userInitial = rawName[0]?.toUpperCase() ?? "U";
 
   // In preview mode, use the preview role label; otherwise use the real role
+  const effectiveRole = isPreview ? previewRole! : (profile.role ?? null);
   const userRole = isPreview
     ? previewRoleLabel(previewRole!)
     : (ROLE_LABELS[profile.role ?? ""] ?? "Sales Rep");
@@ -76,6 +77,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         isIOmember={effectiveIOmember}
         isTeamAdmin={effectiveTeamAdmin}
         isCRMenabled={effectiveCRM}
+        role={effectiveRole}
       />
       <div className="lg:ml-64 pt-14 lg:pt-0">
         {isPreview && <PreviewBanner role={previewRole!} />}

@@ -20,15 +20,17 @@ interface SidebarProps {
   isIOmember?: boolean;
   isTeamAdmin?: boolean;
   isCRMenabled?: boolean;
+  role?: string | null;
 }
 
-function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin?: boolean, isCRMenabled?: boolean) {
+function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin?: boolean, isCRMenabled?: boolean, role?: string | null) {
+  const isSetter = role === "setter";
   return [
     {
       label: "Performance",
       items: [
-        { href: "/dashboard",         label: "Overview",    icon: LayoutDashboard },
-        { href: "/dashboard/log",     label: "Log Calls",   icon: PhoneCall       },
+        { href: "/dashboard",                              label: "Overview",    icon: LayoutDashboard },
+        { href: isSetter ? "/dashboard/crm" : "/dashboard/log", label: "Log Calls", icon: PhoneCall  },
         { href: "/dashboard/history", label: "History",     icon: History         },
         { href: "/dashboard/goals",   label: "Goals",       icon: Target          },
         { href: "/dashboard/stats",   label: "My Stats",    icon: Award           },
@@ -72,8 +74,8 @@ function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin
   ];
 }
 
-export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId, isIOmember, isTeamAdmin, isCRMenabled }: SidebarProps) {
-  const sections = buildSections(teamId, isIOmember, isTeamAdmin, isCRMenabled);
+export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId, isIOmember, isTeamAdmin, isCRMenabled, role }: SidebarProps) {
+  const sections = buildSections(teamId, isIOmember, isTeamAdmin, isCRMenabled, role);
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
