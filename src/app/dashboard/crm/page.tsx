@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getUserTeam } from "@/lib/queries";
+import { getUserTeam, getProfileFull } from "@/lib/queries";
 import { getMyDailyLogs, getTodayLog, getUserRankInTeam, getTeamKpi, computeScore, getKpiStatus } from "@/lib/crm-queries";
 import DailyLogForm from "@/components/crm/DailyLogForm";
+import ClosedCallsSection from "@/components/crm/ClosedCallsSection";
 import { Users, Trophy, TrendingUp } from "lucide-react";
 
 export default async function CRMPage() {
@@ -25,11 +26,14 @@ export default async function CRMPage() {
     );
   }
 
-  const [todayLog, logs, kpi] = await Promise.all([
+  const [todayLog, logs, kpi, profile] = await Promise.all([
     getTodayLog(user.id),
     getMyDailyLogs(user.id, 14),
     getTeamKpi(userTeam.teamId),
+    getProfileFull(user.id),
   ]);
+
+  const isSetter = profile?.role === "setter";
 
   const rankData = await getUserRankInTeam(user.id, userTeam.teamId, kpi);
   const today    = new Date().toISOString().split("T")[0];
@@ -157,7 +161,7 @@ export default async function CRMPage() {
             <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-[#1e2130]">
-                  {["Date","Outbound","Follow-up","Pitched","Booked","Replied","DQ","Hours","Score"].map(h => (
+                  {["Date","Outbound","Follow-up","Pitched","Booked","Replied","Hours","Score"].map(h => (
                     <th key={h} className="px-3 py-3 text-[11px] font-semibold text-[#4b5563] uppercase tracking-wider text-right first:text-left">{h}</th>
                   ))}
                 </tr>
@@ -171,7 +175,6 @@ export default async function CRMPage() {
                     <td className="px-3 py-2.5 text-[#9ca3af] text-xs text-right">{l.calls_pitched}</td>
                     <td className="px-3 py-2.5 text-emerald-400 text-xs text-right font-semibold">{l.calls_booked}</td>
                     <td className="px-3 py-2.5 text-[#9ca3af] text-xs text-right">{l.replied}</td>
-                    <td className="px-3 py-2.5 text-[#9ca3af] text-xs text-right">{l.disqualified}</td>
                     <td className="px-3 py-2.5 text-[#9ca3af] text-xs text-right">{Number(l.hours_worked).toFixed(1)}</td>
                     <td className="px-3 py-2.5 text-indigo-300 text-xs text-right font-bold">{Math.round(computeScore(l, kpi))}</td>
                   </tr>
@@ -181,6 +184,11 @@ export default async function CRMPage() {
           </div>
         </section>
       )}
+      {/* Closed Calls — setter only */}
+      {isSetter && (
+        <ClosedCallsSection userId={user.id} teamId={userTeam.teamId} />
+      )}
+
     </div>
   );
 }

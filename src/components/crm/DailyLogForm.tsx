@@ -12,12 +12,11 @@ const labelCls =
   "block text-[11px] font-semibold text-[#6b7280] uppercase tracking-wider mb-1.5 text-center";
 
 const FIELDS: { key: keyof DailyLog; label: string; decimal?: boolean }[] = [
-  { key: "outbound_messages", label: "Outbound Sent"     },
+  { key: "outbound_messages", label: "Outbounds Sent"    },
   { key: "followup_messages", label: "Follow-ups Sent"   },
-  { key: "calls_pitched",     label: "Calls Pitched"     },
-  { key: "calls_booked",      label: "Calls Booked"      },
+  { key: "calls_pitched",     label: "Call Pitched"      },
+  { key: "calls_booked",      label: "Call Booked"       },
   { key: "replied",           label: "Replied"           },
-  { key: "disqualified",      label: "Disqualified"      },
   { key: "hours_worked",      label: "Hours Worked", decimal: true },
 ];
 
@@ -59,7 +58,7 @@ export default function DailyLogForm({ today, kpi }: Props) {
         <input type="hidden" name="log_date" value={date} />
 
         {[FIELDS.slice(0, 4), FIELDS.slice(4)].map((group, gi) => (
-          <div key={gi} className={`grid gap-3 ${gi === 0 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
+          <div key={gi} className={`grid gap-3 ${gi === 0 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2"}`}>
             {group.map(f => {
               const target = kpi ? Number(kpi[KPI_TARGET_KEY[f.key]] ?? 0) : 0;
               return (

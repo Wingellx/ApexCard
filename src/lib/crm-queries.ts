@@ -578,3 +578,51 @@ function weekStart(dateStr: string): string {
   d.setUTCDate(d.getUTCDate() + diff);
   return d.toISOString().split("T")[0];
 }
+
+// ── Setter Closed Calls ───────────────────────────────────────────
+
+export type ClosedCall = {
+  id: string;
+  user_id: string;
+  team_id: string;
+  lead_name: string;
+  closed_amount: number;
+  commission_pct: number;
+  commission_earned: number;
+  date_closed: string;
+  closer_name: string | null;
+  created_at: string;
+};
+
+export type SetterPreferences = {
+  user_id: string;
+  default_commission_pct: number;
+  updated_at: string;
+};
+
+export async function getSetterClosedCalls(
+  userId: string,
+  teamId: string,
+  limit = 50
+): Promise<ClosedCall[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("setter_closed_calls")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("team_id", teamId)
+    .order("date_closed", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as ClosedCall[];
+}
+
+export async function getSetterPreferences(userId: string): Promise<SetterPreferences | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("setter_preferences")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return (data ?? null) as SetterPreferences | null;
+}
