@@ -7,17 +7,23 @@ import {
 import type { ContentPost } from "@/lib/crm-queries";
 
 const CONTENT_TYPE_SHORT: Record<string, string> = {
-  educational: "Edu", entertaining: "Fun", testimonial: "Test",
-  behind_the_scenes: "BTS", offer_promotional: "Promo", pain_point: "Pain",
-  authority_credibility: "Auth", trend_reactive: "Trend",
-  case_study: "Case", engagement_bait: "Engmt",
+  educational:           "Edu",
+  entertaining:          "Fun",
+  testimonial:           "Test",
+  behind_the_scenes:     "BTS",
+  offer_promotional:     "Promo",
+  pain_point:            "Pain",
+  authority_credibility: "Auth",
+  trend_reactive:        "Trend",
+  case_study:            "Case",
+  engagement_bait:       "Engmt",
 };
 
 const tooltipStyle = {
-  contentStyle:  { background: "#111318", border: "1px solid #1e2130", borderRadius: 8, fontSize: 12 },
-  labelStyle:    { color: "#9ca3af" },
-  itemStyle:     { color: "#f0f2f8" },
-  cursor:        { fill: "rgba(255,255,255,0.03)" },
+  contentStyle: { background: "#111318", border: "1px solid #1e2130", borderRadius: 8, fontSize: 12 },
+  labelStyle:   { color: "#9ca3af" },
+  itemStyle:    { color: "#f0f2f8" },
+  cursor:       { fill: "rgba(255,255,255,0.03)" },
 };
 
 interface Props {
@@ -25,8 +31,16 @@ interface Props {
   weeklyBookings: { week: string; booked: number }[];
 }
 
+function weekStart(dateStr: string): string {
+  const d = new Date(dateStr);
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d.toISOString().split("T")[0]; // always YYYY-MM-DD
+}
+
 export default function ContentDashboard({ posts, weeklyBookings }: Props) {
-  // Avg score by content type
+  // ── Avg score by content type ─────────────────────────────────────
   const scoreByType = (() => {
     const map = new Map<string, { sum: number; count: number }>();
     for (const p of posts) {
@@ -36,35 +50,43 @@ export default function ContentDashboard({ posts, weeklyBookings }: Props) {
       map.set(p.content_type, e);
     }
     return [...map.entries()]
-      .map(([type, { sum, count }]) => ({ type: CONTENT_TYPE_SHORT[type] ?? type, avg: Math.round(sum / count) }))
+      .map(([type, { sum, count }]) => ({
+        type: CONTENT_TYPE_SHORT[type] ?? type,
+        avg:  Math.round(sum / count),
+      }))
       .sort((a, b) => b.avg - a.avg);
   })();
 
-  // Weekly volume + avg score
-  const weeklyVolume = (() => {
+  // ── Weekly volume + avg score ─────────────────────────────────────
+  // Keep the full YYYY-MM-DD key internally; slice to MM-DD only for XAxis labels.
+  const weeklyVolumeRaw = (() => {
     const map = new Map<string, { count: number; scoreSum: number }>();
     for (const p of posts) {
-      const week = weekStart(p.date_posted);
-      const e = map.get(week) ?? { count: 0, scoreSum: 0 };
+      const weekFull = weekStart(p.date_posted);
+      const e = map.get(weekFull) ?? { count: 0, scoreSum: 0 };
       e.count    += 1;
       e.scoreSum += Number(p.content_score) * 100;
-      map.set(week, e);
+      map.set(weekFull, e);
     }
     return [...map.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([week, { count, scoreSum }]) => ({
-        week: week.slice(5), // MM-DD
-        posts: count,
+      .map(([weekFull, { count, scoreSum }]) => ({
+        weekFull,
+        label:    weekFull.slice(5), // MM-DD for display
+        posts:    count,
         avgScore: Math.round(scoreSum / count),
       }));
   })();
 
-  // Correlation: content posts vs booked calls per week
+  const weeklyVolume = weeklyVolumeRaw.map(({ weekFull: _wf, ...rest }) => rest);
+
+  // ── Correlation: content posts vs booked calls ────────────────────
+  // weeklyBookings keys are full YYYY-MM-DD — must match weekFull, not the sliced label.
   const weekMap = new Map(weeklyBookings.map(w => [w.week, w.booked]));
-  const correlation = weeklyVolume.map(w => ({
-    week:   w.week,
+  const correlation = weeklyVolumeRaw.map(w => ({
+    label:  w.label,
     posts:  w.posts,
-    booked: weekMap.get(`20${w.week.length === 5 ? w.week : w.week}`) ?? weeklyBookings.find(b => b.week.slice(5) === w.week)?.booked ?? 0,
+    booked: weekMap.get(w.weekFull) ?? 0,
   }));
 
   const hasData = posts.length > 0;
@@ -77,68 +99,75 @@ export default function ContentDashboard({ posts, weeklyBookings }: Props) {
 
       {hasData && (
         <>
-          {/* Score by type */}
+          {/* Avg score by content type */}
           <div className="bg-[#111318] border border-[#1e2130] rounded-2xl p-5">
-            <p className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider mb-4">Avg Score by Content Type</p>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={scoreByType} margin={{ top: 0, right: 4, bottom: 0, left: -20 }}>
-                <CartesianGrid stroke="#1e2130" vertical={false} />
-                <XAxis dataKey="type" tick={{ fill: "#4b5563", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "#4b5563", fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 100]} />
-                <Tooltip {...tooltipStyle} formatter={(v) => [`${v}%`, "Avg Score"]} />
-                <Bar dataKey="avg" fill="#6366f1" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <p className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider mb-4">
+              Avg Score by Content Type
+            </p>
+            {/* Explicit CSS height on the wrapper prevents Recharts width/height -1 error during hydration */}
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={scoreByType} margin={{ top: 0, right: 4, bottom: 0, left: -20 }}>
+                  <CartesianGrid stroke="#1e2130" vertical={false} />
+                  <XAxis dataKey="type" tick={{ fill: "#4b5563", fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: "#4b5563", fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 100]} />
+                  <Tooltip {...tooltipStyle} formatter={(v) => [`${v}%`, "Avg Score"]} />
+                  <Bar dataKey="avg" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
-          {/* Weekly volume + avg score */}
+          {/* Weekly posts + avg score */}
           {weeklyVolume.length > 1 && (
             <div className="bg-[#111318] border border-[#1e2130] rounded-2xl p-5">
-              <p className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider mb-4">Weekly Posts &amp; Avg Score</p>
-              <ResponsiveContainer width="100%" height={220}>
-                <ComposedChart data={weeklyVolume} margin={{ top: 0, right: 4, bottom: 0, left: -20 }}>
-                  <CartesianGrid stroke="#1e2130" vertical={false} />
-                  <XAxis dataKey="week" tick={{ fill: "#4b5563", fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis yAxisId="left"  tick={{ fill: "#4b5563", fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis yAxisId="right" orientation="right" tick={{ fill: "#4b5563", fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 100]} />
-                  <Tooltip {...tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 11, color: "#6b7280" }} />
-                  <Bar    yAxisId="left"  dataKey="posts"    name="Posts"     fill="#6366f1" radius={[3, 3, 0, 0]} opacity={0.8} />
-                  <Line   yAxisId="right" dataKey="avgScore" name="Avg Score %" type="monotone" stroke="#34d399" dot={false} strokeWidth={2} />
-                </ComposedChart>
-              </ResponsiveContainer>
+              <p className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider mb-4">
+                Weekly Posts &amp; Avg Score
+              </p>
+              <div className="h-[220px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={weeklyVolume} margin={{ top: 0, right: 4, bottom: 0, left: -20 }}>
+                    <CartesianGrid stroke="#1e2130" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fill: "#4b5563", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis yAxisId="left"  tick={{ fill: "#4b5563", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis yAxisId="right" orientation="right" tick={{ fill: "#4b5563", fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 100]} />
+                    <Tooltip {...tooltipStyle} />
+                    <Legend wrapperStyle={{ fontSize: 11, color: "#6b7280" }} />
+                    <Bar  yAxisId="left"  dataKey="posts"    name="Posts"       fill="#6366f1" radius={[3, 3, 0, 0]} opacity={0.8} />
+                    <Line yAxisId="right" dataKey="avgScore" name="Avg Score %" type="monotone" stroke="#34d399" dot={false} strokeWidth={2} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           )}
 
-          {/* Correlation: content vs booked calls */}
+          {/* Content posts vs booked calls correlation */}
           {correlation.length > 1 && weeklyBookings.length > 0 && (
             <div className="bg-[#111318] border border-[#1e2130] rounded-2xl p-5">
-              <p className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider mb-1">Content Posts vs Booked Calls</p>
-              <p className="text-[11px] text-[#374151] mb-4">Weekly correlation — do content weeks drive more bookings?</p>
-              <ResponsiveContainer width="100%" height={220}>
-                <ComposedChart data={correlation} margin={{ top: 0, right: 4, bottom: 0, left: -20 }}>
-                  <CartesianGrid stroke="#1e2130" vertical={false} />
-                  <XAxis dataKey="week" tick={{ fill: "#4b5563", fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis yAxisId="left"  tick={{ fill: "#4b5563", fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis yAxisId="right" orientation="right" tick={{ fill: "#4b5563", fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <Tooltip {...tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 11, color: "#6b7280" }} />
-                  <Line yAxisId="left"  dataKey="posts"  name="Content Posts"  type="monotone" stroke="#6366f1" dot={false} strokeWidth={2} />
-                  <Line yAxisId="right" dataKey="booked" name="Booked Calls"   type="monotone" stroke="#f59e0b" dot={false} strokeWidth={2} />
-                </ComposedChart>
-              </ResponsiveContainer>
+              <p className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider mb-1">
+                Content Posts vs Booked Calls
+              </p>
+              <p className="text-[11px] text-[#374151] mb-4">
+                Weekly correlation — do content weeks drive more bookings?
+              </p>
+              <div className="h-[220px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={correlation} margin={{ top: 0, right: 4, bottom: 0, left: -20 }}>
+                    <CartesianGrid stroke="#1e2130" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fill: "#4b5563", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis yAxisId="left"  tick={{ fill: "#4b5563", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis yAxisId="right" orientation="right" tick={{ fill: "#4b5563", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip {...tooltipStyle} />
+                    <Legend wrapperStyle={{ fontSize: 11, color: "#6b7280" }} />
+                    <Line yAxisId="left"  dataKey="posts"  name="Content Posts" type="monotone" stroke="#6366f1" dot={false} strokeWidth={2} />
+                    <Line yAxisId="right" dataKey="booked" name="Booked Calls"  type="monotone" stroke="#f59e0b" dot={false} strokeWidth={2} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           )}
         </>
       )}
     </div>
   );
-}
-
-function weekStart(dateStr: string): string {
-  const d = new Date(dateStr);
-  const day = d.getUTCDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setUTCDate(d.getUTCDate() + diff);
-  return d.toISOString().split("T")[0];
 }

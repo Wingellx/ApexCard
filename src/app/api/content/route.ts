@@ -16,13 +16,11 @@ export async function GET(request: Request) {
 
     const admin = createAdminClient();
     const { data: membership } = await admin
-      .from("team_members").select("team_id, role").eq("user_id", user.id).maybeSingle();
+      .from("team_members").select("team_id").eq("user_id", user.id).eq("team_id", teamId).maybeSingle();
     const { data: managerRow } = await admin
       .from("team_managers").select("team_id").eq("user_id", user.id).eq("team_id", teamId).maybeSingle();
 
-    const isMember  = membership?.team_id === teamId;
-    const isManager = !!managerRow;
-    if (!isMember && !isManager) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!membership && !managerRow) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const posts = await getTeamContentPosts(teamId);
     return NextResponse.json(posts);
