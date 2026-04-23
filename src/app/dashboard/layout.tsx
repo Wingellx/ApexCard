@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileFull, getLoggedDates, calculateStreak, getUserTeam, getUserTeamRole } from "@/lib/queries";
 import { getIsIOmember } from "@/lib/io-queries";
+import { getPreviewRole, previewRoleLabel } from "@/lib/preview";
 import Sidebar from "@/components/dashboard/Sidebar";
+import PreviewBanner from "@/components/owner/PreviewBanner";
 
 const ROLE_LABELS: Record<string, string> = {
   closer:        "Closer",
@@ -20,6 +22,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect("/auth/login");
 
+  const previewRole = await getPreviewRole();
+
   const [profile, allDates, userTeam, isIOmember, teamRole] = await Promise.all([
     getProfileFull(user.id),
     getLoggedDates(user.id),
@@ -29,36 +33,52 @@ export default async function DashboardLayout({ children }: { children: React.Re
   ]);
 
   if (!profile || !profile.onboarding_completed) redirect("/onboarding");
-  if (profile.account_type === "owner") redirect("/owner");
 
-  const subStatus   = profile?.subscription_status ?? "trialing";
-  const trialEndsAt = profile?.trial_ends_at;
+  // Owners are redirected to /owner unless they have an active preview session
+  if (profile.account_type === "owner" && !previewRole) redirect("/owner");
+
+  const isPreview = profile.account_type === "owner" && !!previewRole;
+
+  const subStatus    = profile.subscription_status ?? "trialing";
+  const trialEndsAt  = profile.trial_ends_at;
   const trialExpired = trialEndsAt ? new Date(trialEndsAt) < new Date() : false;
   const showUpgradeBanner =
-    subStatus === "canceled" || subStatus === "unpaid" ||
-    (subStatus === "trialing" && trialExpired);
+    !isPreview &&
+    (subStatus === "canceled" || subStatus === "unpaid" ||
+     (subStatus === "trialing" && trialExpired));
 
-  const streak      = calculateStreak(allDates);
-  const rawName     = profile?.full_name?.trim() || profile?.email?.split("@")[0] || user?.email?.split("@")[0] || "User";
-  const userName    = rawName;
-  const userEmail   = profile?.email ?? user?.email ?? "";
-  const userRole    = ROLE_LABELS[profile?.role ?? ""] ?? "Sales Rep";
+  const rawName     = profile.full_name?.trim() || profile.email?.split("@")[0] || user.email?.split("@")[0] || "User";
+  const userEmail   = profile.email ?? user.email ?? "";
   const userInitial = rawName[0]?.toUpperCase() ?? "U";
+
+  // In preview mode, use the preview role label; otherwise use the real role
+  const userRole = isPreview
+    ? previewRoleLabel(previewRole!)
+    : (ROLE_LABELS[profile.role ?? ""] ?? "Sales Rep");
+
+  // In preview mode, show a limited rep-like nav (no team/CRM/IO — owner has none)
+  const effectiveTeamId    = isPreview ? null : (userTeam?.teamId ?? null);
+  const effectiveIOmember  = isPreview ? false : isIOmember;
+  const effectiveTeamAdmin = isPreview ? false : teamRole === "admin";
+  const effectiveCRM       = isPreview ? false : !!userTeam;
+
+  const streak = calculateStreak(allDates);
 
   return (
     <div className="min-h-screen bg-[#0a0b0f]">
       <Sidebar
-        userName={userName}
+        userName={rawName}
         userEmail={userEmail}
         userRole={userRole}
         userInitial={userInitial}
         streak={streak}
-        teamId={userTeam?.teamId ?? null}
-        isIOmember={isIOmember}
-        isTeamAdmin={teamRole === "admin"}
-        isCRMenabled={!!userTeam}
+        teamId={effectiveTeamId}
+        isIOmember={effectiveIOmember}
+        isTeamAdmin={effectiveTeamAdmin}
+        isCRMenabled={effectiveCRM}
       />
       <div className="lg:ml-64 pt-14 lg:pt-0">
+        {isPreview && <PreviewBanner role={previewRole!} />}
         {showUpgradeBanner && (
           <div className="bg-rose-500/10 border-b border-rose-500/20 px-6 py-3 flex items-center justify-between gap-4">
             <p className="text-sm text-rose-300 font-medium">

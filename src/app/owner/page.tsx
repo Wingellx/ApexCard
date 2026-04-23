@@ -15,11 +15,12 @@ import {
 import ShortlistButton from "./ShortlistButton";
 import ProcessTiersButton from "./ProcessTiersButton";
 import { signout } from "@/app/auth/actions";
-import { approveTeamById, declineTeamById } from "./actions";
+import { approveTeamById, declineTeamById, setPreviewRole } from "./actions";
+import { PREVIEW_ROLES } from "@/lib/preview";
 import {
   Clock, Search, ExternalLink, ShieldCheck, Mail,
   Star, Users, Briefcase, BarChart3, Shield, ChevronRight,
-  CheckCircle2, XCircle, CalendarDays, User,
+  CheckCircle2, XCircle, CalendarDays, User, Eye,
 } from "lucide-react";
 
 const fmt = (n: number) =>
@@ -298,6 +299,40 @@ function PendingApplicationCard({ app }: { app: PendingTeamApplication }) {
   );
 }
 
+// ── Preview As section ────────────────────────────────────────
+
+function PreviewAsSection() {
+  async function enterPreview(formData: FormData) {
+    "use server";
+    await setPreviewRole(formData.get("role") as string);
+  }
+
+  return (
+    <div className="bg-[#0f1117] border border-[#1e2130] rounded-2xl p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Eye className="w-3.5 h-3.5 text-indigo-400" />
+        <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest">Preview As Rep</p>
+      </div>
+      <p className="text-xs text-[#4b5563] mb-4 leading-relaxed">
+        Temporarily preview the dashboard as a specific rep role. Session-only — nothing changes in the database.
+      </p>
+      <form action={enterPreview} className="flex flex-wrap gap-2">
+        {PREVIEW_ROLES.map((r) => (
+          <button
+            key={r.value}
+            type="submit"
+            name="role"
+            value={r.value}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 hover:border-indigo-400/40 transition-colors"
+          >
+            {r.label}
+          </button>
+        ))}
+      </form>
+    </div>
+  );
+}
+
 // ── Full portal ───────────────────────────────────────────────
 
 function FullPortal({
@@ -350,6 +385,9 @@ function FullPortal({
             <div className="border-t border-white/[0.04] mt-8" />
           </div>
         )}
+
+        {/* Preview As */}
+        <PreviewAsSection />
 
         {/* Search */}
         <form method="GET" className="relative">

@@ -1,8 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { PREVIEW_COOKIE, PREVIEW_ROLES } from "@/lib/preview";
 
 async function assertVerifiedOwner() {
   const supabase = await createClient();
@@ -32,6 +35,27 @@ export async function declineTeamById(teamId: string): Promise<void> {
   const admin = createAdminClient();
   await admin.from("teams").update({ status: "declined" }).eq("id", teamId).eq("status", "pending");
   revalidatePath("/owner");
+}
+
+// ── Preview mode ──────────────────────────────────────────────
+
+export async function setPreviewRole(role: string): Promise<void> {
+  const user = await assertVerifiedOwner();
+  if (!user) return;
+  const valid = PREVIEW_ROLES.map((r) => r.value) as string[];
+  if (!valid.includes(role)) return;
+  const store = await cookies();
+  store.set(PREVIEW_COOKIE, role, { path: "/", sameSite: "lax", httpOnly: true });
+  redirect("/dashboard");
+}
+
+export async function clearPreviewRole(): Promise<void> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/auth/login");
+  const store = await cookies();
+  store.delete(PREVIEW_COOKIE);
+  redirect("/owner");
 }
 
 export async function toggleShortlist(repId: string): Promise<void> {
