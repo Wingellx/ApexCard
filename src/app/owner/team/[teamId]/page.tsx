@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileFull, getOwnerTeamDetail } from "@/lib/queries";
 import CopyInviteButton from "@/components/owner/CopyInviteButton";
+import { signout } from "@/app/auth/actions";
 import {
   ArrowLeft, Shield, Users, ChevronRight,
   Crown, User, BarChart3, ExternalLink,
@@ -89,12 +90,11 @@ export default async function OwnerTeamDetailPage({
                 {team.status}
               </span>
             )}
-            <Link
-              href="/auth/signout"
-              className="text-xs text-[#374151] hover:text-[#6b7280] transition-colors font-medium"
-            >
-              Sign out
-            </Link>
+            <form action={signout}>
+              <button type="submit" className="text-xs text-[#374151] hover:text-[#6b7280] transition-colors font-medium">
+                Sign out
+              </button>
+            </form>
           </div>
         </div>
       </div>

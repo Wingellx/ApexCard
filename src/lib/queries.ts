@@ -730,6 +730,38 @@ export type OwnerTeamDetail = {
   subTeams:    OwnerSubTeam[];
 };
 
+export type PendingTeamApplication = {
+  id:         string;
+  name:       string;
+  createdAt:  string;
+  parentName: string | null;
+  managerName: string | null;
+};
+
+export async function getPendingTeamApplications(): Promise<PendingTeamApplication[]> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("teams")
+    .select("id, name, created_at, parent_team_id, created_by, teams!parent_team_id(name), profiles!created_by(full_name)")
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+
+  return (data ?? []).map((t: unknown) => {
+    const row = t as {
+      id: string; name: string; created_at: string;
+      teams: { name: string } | null;
+      profiles: { full_name: string | null } | null;
+    };
+    return {
+      id:          row.id,
+      name:        row.name,
+      createdAt:   row.created_at,
+      parentName:  row.teams?.name ?? null,
+      managerName: row.profiles?.full_name ?? null,
+    };
+  });
+}
+
 // Only returns top-level teams (no parent)
 export async function getAllTeamsForOwner(): Promise<OwnerTeamRow[]> {
   const admin = createAdminClient();
@@ -765,12 +797,16 @@ export async function getAllTeamsForOwner(): Promise<OwnerTeamRow[]> {
 export async function getOwnerTeamDetail(teamId: string): Promise<OwnerTeamDetail | null> {
   const admin = createAdminClient();
 
-  const [{ data: team }, { data: rawMembers }, { data: subTeams }, { data: subMembers }] = await Promise.all([
+  const [{ data: team }, { data: rawMembers }, { data: subTeams }] = await Promise.all([
     admin.from("teams").select("id, name, description, division, tier, status, parent_team_id, teams!parent_team_id(id,name)").eq("id", teamId).maybeSingle(),
     admin.from("team_members").select("user_id, role, profiles(full_name, username, role)").eq("team_id", teamId),
     admin.from("teams").select("id, name, description, status").eq("parent_team_id", teamId).order("name"),
-    admin.from("team_members").select("team_id"),
   ]);
+
+  const subTeamIds = (subTeams ?? []).map((s: unknown) => (s as { id: string }).id);
+  const { data: subMembers } = subTeamIds.length > 0
+    ? await admin.from("team_members").select("team_id").in("team_id", subTeamIds)
+    : { data: [] };
 
   if (!team) return null;
 

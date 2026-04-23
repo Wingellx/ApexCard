@@ -6,13 +6,6 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params;
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "(unset)";
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "(unset)";
-  console.log("[teams/approve] SUPABASE_URL:", url);
-  console.log("[teams/approve] SERVICE_ROLE_KEY prefix:", key.slice(0, 10));
-  console.log("[teams/approve] token:", token);
-
   const admin = createAdminClient();
 
   const { data: team, error } = await admin
@@ -22,9 +15,6 @@ export async function GET(
     .eq("status", "pending")
     .select("name")
     .single();
-
-  console.log("[teams/approve] data:", JSON.stringify(team));
-  console.log("[teams/approve] error:", JSON.stringify(error));
 
   if (error || !team) {
     return new NextResponse(
@@ -37,5 +27,5 @@ export async function GET(
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.apexcard.app";
-  return NextResponse.redirect(`${appUrl}/dashboard/crm/manager`);
+  return NextResponse.redirect(`${appUrl}/owner`);
 }

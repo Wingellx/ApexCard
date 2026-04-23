@@ -1,32 +1,46 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import {
-  createClient
-} from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import {
   getProfileFull,
   getOwnerVerificationRequest,
   getDiscoverableReps,
   getOwnerShortlist,
   getAllTeamsForOwner,
+  getPendingTeamApplications,
   type DiscoverableRep,
   type OwnerTeamRow,
+  type PendingTeamApplication,
 } from "@/lib/queries";
 import ShortlistButton from "./ShortlistButton";
 import ProcessTiersButton from "./ProcessTiersButton";
+import { signout } from "@/app/auth/actions";
+import { approveTeamById, declineTeamById } from "./actions";
 import {
   Clock, Search, ExternalLink, ShieldCheck, Mail,
   Star, Users, Briefcase, BarChart3, Shield, ChevronRight,
+  CheckCircle2, XCircle, CalendarDays, User,
 } from "lucide-react";
 
-const fmt    = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+const fmt = (n: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 
 const ROLE_LABELS: Record<string, string> = {
-  closer:   "Closer",
-  setter:   "Setter",
-  operator: "Operator",
-  manager:  "Manager",
+  closer: "Closer", setter: "Setter", operator: "Operator",
+  manager: "Manager", sales_manager: "Sales Manager",
 };
+
+// ── Sign-out form ─────────────────────────────────────────────
+
+function SignOutForm({ className }: { className?: string }) {
+  return (
+    <form action={signout}>
+      <button type="submit" className={className ?? "text-xs text-[#374151] hover:text-[#6b7280] transition-colors font-medium"}>
+        Sign out
+      </button>
+    </form>
+  );
+}
 
 // ── Pending page ─────────────────────────────────────────────
 
@@ -70,11 +84,9 @@ function PendingPage({ companyName, email }: { companyName: string | null; email
           </div>
         </div>
 
-        <form action="/auth/signout" method="POST" className="mt-6">
-          <button className="text-sm text-[#374151] hover:text-[#6b7280] transition-colors">
-            Sign out
-          </button>
-        </form>
+        <div className="mt-6">
+          <SignOutForm className="text-sm text-[#374151] hover:text-[#6b7280] transition-colors" />
+        </div>
       </div>
     </div>
   );
@@ -87,7 +99,6 @@ function RepCard({ rep, isShortlisted }: { rep: DiscoverableRep; isShortlisted: 
 
   return (
     <div className="bg-[#0f1117] border border-[#1e2130] rounded-2xl p-5 hover:bg-[#111520] transition-colors flex flex-col gap-4">
-      {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20 border border-violet-500/20 flex items-center justify-center shrink-0">
@@ -99,9 +110,7 @@ function RepCard({ rep, isShortlisted }: { rep: DiscoverableRep; isShortlisted: 
               {rep.isVerified && <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
             </div>
             <div className="flex items-center gap-2 flex-wrap mt-0.5">
-              {rep.username && (
-                <span className="text-[11px] text-[#4b5563]">@{rep.username}</span>
-              )}
+              {rep.username && <span className="text-[11px] text-[#4b5563]">@{rep.username}</span>}
               {rep.role && (
                 <span className="text-[10px] font-semibold text-[#374151] bg-[#1a1d28] border border-[#1e2130] px-1.5 py-0.5 rounded-full">
                   {ROLE_LABELS[rep.role] ?? rep.role}
@@ -113,7 +122,6 @@ function RepCard({ rep, isShortlisted }: { rep: DiscoverableRep; isShortlisted: 
         <ShortlistButton repId={rep.id} isShortlisted={isShortlisted} />
       </div>
 
-      {/* Team badge */}
       {rep.teamName && (
         <div className="flex items-center gap-1.5">
           <Users className="w-3 h-3 text-indigo-400/60 shrink-0" />
@@ -121,12 +129,8 @@ function RepCard({ rep, isShortlisted }: { rep: DiscoverableRep; isShortlisted: 
         </div>
       )}
 
-      {/* Bio */}
-      {rep.bio && (
-        <p className="text-xs text-[#6b7280] leading-relaxed line-clamp-2">{rep.bio}</p>
-      )}
+      {rep.bio && <p className="text-xs text-[#6b7280] leading-relaxed line-clamp-2">{rep.bio}</p>}
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-3 bg-white/[0.02] rounded-xl p-3">
         <div className="text-center">
           <p className="text-xs font-extrabold text-emerald-400 tabular-nums">{fmt(rep.totalCash)}</p>
@@ -142,7 +146,6 @@ function RepCard({ rep, isShortlisted }: { rep: DiscoverableRep; isShortlisted: 
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex items-center gap-2">
         {rep.username ? (
           <Link
@@ -169,13 +172,16 @@ function RepCard({ rep, isShortlisted }: { rep: DiscoverableRep; isShortlisted: 
   );
 }
 
-// ── Full portal ───────────────────────────────────────────────
+// ── Team card ─────────────────────────────────────────────────
 
 const TIER_LABELS: Record<number, string> = { 1: "Tier 1", 2: "Tier 2", 3: "Tier 3" };
 const DIVISION_LABELS: Record<string, string> = {
-  sales:       "Sales",
-  improvement: "Improvement",
-  mixed:       "Mixed",
+  sales: "Sales", improvement: "Improvement", mixed: "Mixed",
+};
+const STATUS_STYLES: Record<string, string> = {
+  pending:   "text-amber-400 bg-amber-500/10 border-amber-500/20",
+  declined:  "text-rose-400  bg-rose-500/10  border-rose-500/20",
+  suspended: "text-rose-400  bg-rose-500/10  border-rose-500/20",
 };
 
 function TeamCard({ team }: { team: OwnerTeamRow }) {
@@ -198,6 +204,11 @@ function TeamCard({ team }: { team: OwnerTeamRow }) {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {team.status && team.status !== "active" && (
+            <span className={`text-[10px] font-bold border px-2 py-0.5 rounded-full capitalize ${STATUS_STYLES[team.status] ?? "text-[#6b7280] bg-white/5 border-white/10"}`}>
+              {team.status}
+            </span>
+          )}
           {team.tier && (
             <span className="text-[10px] font-bold text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded-full">
               {TIER_LABELS[team.tier] ?? `Tier ${team.tier}`}
@@ -219,21 +230,90 @@ function TeamCard({ team }: { team: OwnerTeamRow }) {
   );
 }
 
+// ── Pending application card ──────────────────────────────────
+
+function PendingApplicationCard({ app }: { app: PendingTeamApplication }) {
+  const daysAgo = Math.floor((Date.now() - new Date(app.createdAt).getTime()) / 86_400_000);
+
+  async function approve() {
+    "use server";
+    await approveTeamById(app.id);
+  }
+
+  async function decline() {
+    "use server";
+    await declineTeamById(app.id);
+  }
+
+  return (
+    <div className="bg-[#0f1117] border border-amber-500/20 rounded-2xl p-5 flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+            <Shield className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-[#f0f2f8] truncate">{app.name}</p>
+            {app.parentName && (
+              <p className="text-[11px] text-[#4b5563] mt-0.5">Sub-team of {app.parentName}</p>
+            )}
+          </div>
+        </div>
+        <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full shrink-0">
+          Pending
+        </span>
+      </div>
+
+      <div className="flex items-center gap-4 text-[11px] text-[#4b5563]">
+        {app.managerName && (
+          <span className="flex items-center gap-1">
+            <User className="w-3 h-3" />{app.managerName}
+          </span>
+        )}
+        <span className="flex items-center gap-1">
+          <CalendarDays className="w-3 h-3" />
+          {daysAgo === 0 ? "Today" : daysAgo === 1 ? "Yesterday" : `${daysAgo}d ago`}
+        </span>
+      </div>
+
+      <div className="flex gap-2">
+        <form action={approve} className="flex-1">
+          <button
+            type="submit"
+            className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-colors"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+          </button>
+        </form>
+        <form action={decline} className="flex-1">
+          <button
+            type="submit"
+            className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-colors"
+          >
+            <XCircle className="w-3.5 h-3.5" /> Decline
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Full portal ───────────────────────────────────────────────
+
 function FullPortal({
   reps,
   shortlist,
   query,
-  totalReps,
   teams,
+  pending,
 }: {
-  reps: DiscoverableRep[];
+  reps:      DiscoverableRep[];
   shortlist: Set<string>;
-  query: string;
-  totalReps: number;
-  teams: OwnerTeamRow[];
+  query:     string;
+  teams:     OwnerTeamRow[];
+  pending:   PendingTeamApplication[];
 }) {
   const shortlisted = reps.filter((r) => shortlist.has(r.id));
-  const all         = reps;
 
   return (
     <div className="min-h-screen bg-[#080a0e]">
@@ -245,22 +325,34 @@ function FullPortal({
               <Briefcase className="w-4 h-4 text-indigo-400" />
             </div>
             <div>
-              <h1 className="text-base font-extrabold text-[#f0f2f8] tracking-tight leading-none">Rep Directory</h1>
-              <p className="text-[11px] text-[#4b5563] mt-0.5">{totalReps} rep{totalReps !== 1 ? "s" : ""}</p>
+              <h1 className="text-base font-extrabold text-[#f0f2f8] tracking-tight leading-none">Owner Portal</h1>
+              <p className="text-[11px] text-[#4b5563] mt-0.5">{reps.length} rep{reps.length !== 1 ? "s" : ""}</p>
             </div>
           </div>
-          <Link
-            href="/auth/signout"
-            className="text-xs text-[#374151] hover:text-[#6b7280] transition-colors font-medium"
-          >
-            Sign out
-          </Link>
+          <SignOutForm />
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto px-6 py-8 space-y-10">
+
+        {/* Pending team applications */}
+        {pending.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <Clock className="w-3.5 h-3.5 text-amber-400" />
+              <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest">
+                Pending Applications ({pending.length})
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {pending.map((app) => <PendingApplicationCard key={app.id} app={app} />)}
+            </div>
+            <div className="border-t border-white/[0.04] mt-8" />
+          </div>
+        )}
+
         {/* Search */}
-        <form method="GET" className="relative mb-8">
+        <form method="GET" className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#374151] pointer-events-none" />
           <input
             name="q"
@@ -273,7 +365,7 @@ function FullPortal({
 
         {/* Shortlist section */}
         {shortlisted.length > 0 && !query && (
-          <div className="mb-8">
+          <div>
             <div className="flex items-center gap-2 mb-4">
               <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
               <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest">
@@ -281,17 +373,15 @@ function FullPortal({
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {shortlisted.map((rep) => (
-                <RepCard key={rep.id} rep={rep} isShortlisted />
-              ))}
+              {shortlisted.map((rep) => <RepCard key={rep.id} rep={rep} isShortlisted />)}
             </div>
-            <div className="border-t border-white/[0.04] mt-8 mb-6" />
+            <div className="border-t border-white/[0.04] mt-8" />
           </div>
         )}
 
         {/* Teams section */}
         {!query && teams.length > 0 && (
-          <div className="mb-10">
+          <div>
             <div className="flex items-center gap-2 mb-4">
               <Shield className="w-3.5 h-3.5 text-[#4b5563]" />
               <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest">
@@ -301,12 +391,12 @@ function FullPortal({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {teams.map((t) => <TeamCard key={t.id} team={t} />)}
             </div>
-            <div className="border-t border-white/[0.04] mt-8 mb-6" />
+            <div className="border-t border-white/[0.04] mt-8" />
           </div>
         )}
 
         {/* Admin tools */}
-        <div className="mb-10 bg-[#0f1117] border border-[#1e2130] rounded-2xl p-5">
+        <div className="bg-[#0f1117] border border-[#1e2130] rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-4">
             <BarChart3 className="w-3.5 h-3.5 text-indigo-400" />
             <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest">Community Rankings</p>
@@ -318,32 +408,34 @@ function FullPortal({
         </div>
 
         {/* All reps */}
-        <div className="flex items-center gap-2 mb-4">
-          <Users className="w-3.5 h-3.5 text-[#4b5563]" />
-          <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest">
-            {query ? `Results for "${query}" (${all.length})` : `All Reps (${all.length})`}
-          </p>
-        </div>
-
-        {all.length === 0 ? (
-          <div className="bg-[#0f1117] border border-[#1e2130] rounded-2xl py-16 text-center">
-            <Search className="w-10 h-10 text-[#1e2130] mx-auto mb-4" />
-            <p className="text-sm font-semibold text-[#374151]">
-              {query ? `No reps match "${query}"` : "No reps yet"}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <Users className="w-3.5 h-3.5 text-[#4b5563]" />
+            <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest">
+              {query ? `Results for "${query}" (${reps.length})` : `All Reps (${reps.length})`}
             </p>
-            {!query && (
-              <p className="text-xs text-[#2d3147] mt-1">
-                Reps appear here when they enable discoverability in their profile settings.
+          </div>
+
+          {reps.length === 0 ? (
+            <div className="bg-[#0f1117] border border-[#1e2130] rounded-2xl py-16 text-center">
+              <Search className="w-10 h-10 text-[#1e2130] mx-auto mb-4" />
+              <p className="text-sm font-semibold text-[#374151]">
+                {query ? `No reps match "${query}"` : "No reps yet"}
               </p>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {all.map((rep) => (
-              <RepCard key={rep.id} rep={rep} isShortlisted={shortlist.has(rep.id)} />
-            ))}
-          </div>
-        )}
+              {!query && (
+                <p className="text-xs text-[#2d3147] mt-1">
+                  Reps appear here when they enable discoverability in their profile settings.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {reps.map((rep) => (
+                <RepCard key={rep.id} rep={rep} isShortlisted={shortlist.has(rep.id)} />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -362,10 +454,8 @@ export default async function OwnerPortalPage({
 
   const profile = await getProfileFull(user.id);
 
-  // Reps cannot access this page
   if (!profile || profile.account_type !== "owner") redirect("/dashboard");
 
-  // Unverified owners → pending page
   if (!profile.verified_owner) {
     const request = await getOwnerVerificationRequest(user.id);
     return (
@@ -376,19 +466,17 @@ export default async function OwnerPortalPage({
     );
   }
 
-  // Verified owner → full portal
-  const sp = await searchParams;
+  const sp    = await searchParams;
   const query = sp.q?.trim() ?? "";
 
-  const [reps, shortlist, teams] = await Promise.all([
+  const [reps, shortlist, teams, pending] = await Promise.all([
     getDiscoverableReps(query || undefined),
     getOwnerShortlist(user.id),
     getAllTeamsForOwner(),
+    getPendingTeamApplications(),
   ]);
 
-  const totalReps = query ? (await getDiscoverableReps()).length : reps.length;
-
   return (
-    <FullPortal reps={reps} shortlist={shortlist} query={query} totalReps={totalReps} teams={teams} />
+    <FullPortal reps={reps} shortlist={shortlist} query={query} teams={teams} pending={pending} />
   );
 }
