@@ -539,7 +539,7 @@ export async function getTeamLeaderboard(
 
 // ── Team admin ───────────────────────────────────────────────
 
-export async function getUserTeamRole(userId: string): Promise<"admin" | "member" | null> {
+export async function getUserTeamRole(userId: string): Promise<"admin" | "member" | "offer_owner" | null> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("team_members")
@@ -547,7 +547,7 @@ export async function getUserTeamRole(userId: string): Promise<"admin" | "member
     .eq("user_id", userId)
     .maybeSingle();
   if (!data) return null;
-  return (data.role as "admin" | "member") ?? "member";
+  return (data.role as "admin" | "member" | "offer_owner") ?? "member";
 }
 
 export interface AdminMemberRow {

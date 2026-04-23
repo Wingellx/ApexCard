@@ -13,9 +13,9 @@ export async function POST(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { teamId } = await redeemInviteToken(token, user.id);
+    const { teamId, role } = await redeemInviteToken(token, user.id);
 
-    return NextResponse.json({ success: true, teamId });
+    return NextResponse.json({ success: true, teamId, role });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to redeem invite.";
     return NextResponse.json({ error: message }, { status: 400 });

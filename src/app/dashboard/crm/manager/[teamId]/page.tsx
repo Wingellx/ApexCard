@@ -11,7 +11,8 @@ import {
 } from "@/lib/crm-queries";
 import InviteGenerator from "@/components/crm/InviteGenerator";
 import KPIForm from "@/components/crm/KPIForm";
-import { Shield, Trophy, TrendingUp, Users, ArrowLeft } from "lucide-react";
+import ContentTab from "@/components/crm/ContentTab";
+import { Shield, Trophy, TrendingUp, Users, ArrowLeft, FileVideo } from "lucide-react";
 
 function defaultRange() {
   const to   = new Date();
@@ -27,44 +28,52 @@ export default async function CRMTeamPage({
   searchParams,
 }: {
   params:       Promise<{ teamId: string }>;
-  searchParams: Promise<{ tab?: string; member?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ tab?: string; subtab?: string; member?: string; from?: string; to?: string }>;
 }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
   const role = await getUserTeamRole(user.id);
-  if (role !== "admin") redirect("/dashboard/crm");
+  // offer_owner can access this page (content tab only); non-members cannot
+  if (role !== "admin" && role !== "offer_owner") redirect("/dashboard/crm");
 
   const { teamId } = await params;
 
-  // Verify this user manages this team
+  // Verify this user belongs to this team
   const admin = createAdminClient();
   const [membershipRes, managerRes] = await Promise.all([
-    admin.from("team_members").select("team_id").eq("user_id", user.id).eq("team_id", teamId).eq("role", "admin").maybeSingle(),
+    admin.from("team_members").select("team_id, role").eq("user_id", user.id).eq("team_id", teamId).maybeSingle(),
     admin.from("team_managers").select("team_id").eq("user_id", user.id).eq("team_id", teamId).maybeSingle(),
   ]);
 
   if (!membershipRes.data && !managerRes.data) notFound();
 
+  const memberRole = (membershipRes.data?.role as string | undefined) ?? role ?? "member";
+  const isAdmin    = memberRole === "admin" || !!managerRes.data;
+
   const { data: teamRow } = await admin.from("teams").select("name, status").eq("id", teamId).maybeSingle();
   if (!teamRow || teamRow.status !== "active") notFound();
 
   const sp          = await searchParams;
-  const tab         = sp.tab || "leaderboard";
+  const defaultTab  = isAdmin ? "leaderboard" : "content";
+  const tab         = sp.tab || defaultTab;
+  const subtab      = (sp.subtab as "log" | "table" | "dashboard") || "log";
   const defaults    = defaultRange();
   const fromDate    = sp.from   || defaults.from;
   const toDate      = sp.to     || defaults.to;
   const memberFilter = sp.member || "";
 
   const [kpi, tokens] = await Promise.all([
-    getTeamKpi(teamId),
-    getManagerInviteTokens(user.id, teamId),
+    isAdmin ? getTeamKpi(teamId) : Promise.resolve(null),
+    isAdmin ? getManagerInviteTokens(user.id, teamId) : Promise.resolve([]),
   ]);
 
   const [leaderboard, logs] = await Promise.all([
-    getTeamLeaderboard(teamId, { from: fromDate, to: toDate, kpi }),
-    tab === "logs"
+    isAdmin && (tab === "leaderboard" || tab === "logs")
+      ? getTeamLeaderboard(teamId, { from: fromDate, to: toDate, kpi })
+      : Promise.resolve([]),
+    isAdmin && tab === "logs"
       ? getTeamDailyLogs(teamId, { from: fromDate, to: toDate, memberId: memberFilter || undefined })
       : Promise.resolve([]),
   ]);
@@ -90,68 +99,75 @@ export default async function CRMTeamPage({
           <span className="text-xs font-semibold text-violet-400/80 uppercase tracking-widest">Manager View</span>
         </div>
         <h1 className="text-2xl font-extrabold text-[#f0f2f8] tracking-tight">{teamRow.name}</h1>
-        <p className="text-sm text-[#6b7280] mt-0.5">{leaderboard.length} setter{leaderboard.length !== 1 ? "s" : ""}</p>
+        {isAdmin && <p className="text-sm text-[#6b7280] mt-0.5">{leaderboard.length} setter{leaderboard.length !== 1 ? "s" : ""}</p>}
       </div>
 
-      {/* Team summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: "Team Score",    value: Math.round(teamTotal).toString() },
-          { label: "Total Booked",  value: teamBooked.toString()            },
-          { label: "Total Pitched", value: teamPitched.toString()           },
-          { label: "Avg Book Rate", value: teamPitched > 0 ? `${Math.round((teamBooked / teamPitched) * 100)}%` : "—" },
-        ].map(c => (
-          <div key={c.label} className="bg-[#111318] border border-[#1e2130] rounded-xl px-4 py-3">
-            <p className="text-[11px] text-[#4b5563] uppercase tracking-wider mb-1">{c.label}</p>
-            <p className="text-lg font-bold text-[#f0f2f8]">{c.value}</p>
-          </div>
-        ))}
-      </div>
-
-      <KPIForm kpi={kpi} teamId={teamId} />
-      <InviteGenerator existingTokens={tokens} teamId={teamId} />
-
-      {/* Date filter */}
-      <form method="GET" className="flex flex-wrap items-end gap-3 bg-[#111318] border border-[#1e2130] rounded-2xl p-4">
-        <input type="hidden" name="tab" value={tab} />
-        <div>
-          <label className="block text-[11px] font-semibold text-[#6b7280] uppercase tracking-wider mb-1.5">From</label>
-          <input name="from" type="date" defaultValue={fromDate}
-            className="bg-[#0d0f15] border border-[#1e2130] rounded-lg px-3 py-2 text-sm text-[#f0f2f8] focus:outline-none focus:border-indigo-500 transition-colors" />
+      {/* Team summary — admin only */}
+      {isAdmin && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "Team Score",    value: Math.round(teamTotal).toString() },
+            { label: "Total Booked",  value: teamBooked.toString()            },
+            { label: "Total Pitched", value: teamPitched.toString()           },
+            { label: "Avg Book Rate", value: teamPitched > 0 ? `${Math.round((teamBooked / teamPitched) * 100)}%` : "—" },
+          ].map(c => (
+            <div key={c.label} className="bg-[#111318] border border-[#1e2130] rounded-xl px-4 py-3">
+              <p className="text-[11px] text-[#4b5563] uppercase tracking-wider mb-1">{c.label}</p>
+              <p className="text-lg font-bold text-[#f0f2f8]">{c.value}</p>
+            </div>
+          ))}
         </div>
-        <div>
-          <label className="block text-[11px] font-semibold text-[#6b7280] uppercase tracking-wider mb-1.5">To</label>
-          <input name="to" type="date" defaultValue={toDate}
-            className="bg-[#0d0f15] border border-[#1e2130] rounded-lg px-3 py-2 text-sm text-[#f0f2f8] focus:outline-none focus:border-indigo-500 transition-colors" />
-        </div>
-        {tab === "logs" && leaderboard.length > 0 && (
+      )}
+
+      {isAdmin && <KPIForm kpi={kpi} teamId={teamId} />}
+      {isAdmin && <InviteGenerator existingTokens={tokens as never[]} teamId={teamId} />}
+
+      {/* Date filter — only for leaderboard/logs tabs */}
+      {isAdmin && tab !== "content" && (
+        <form method="GET" className="flex flex-wrap items-end gap-3 bg-[#111318] border border-[#1e2130] rounded-2xl p-4">
+          <input type="hidden" name="tab" value={tab} />
           <div>
-            <label className="block text-[11px] font-semibold text-[#6b7280] uppercase tracking-wider mb-1.5">Member</label>
-            <select name="member" defaultValue={memberFilter}
-              className="bg-[#0d0f15] border border-[#1e2130] rounded-lg px-3 py-2 text-sm text-[#f0f2f8] focus:outline-none focus:border-indigo-500 transition-colors">
-              <option value="">All</option>
-              {leaderboard.map(m => (
-                <option key={m.user_id} value={m.user_id}>{m.full_name || m.email}</option>
-              ))}
-            </select>
+            <label className="block text-[11px] font-semibold text-[#6b7280] uppercase tracking-wider mb-1.5">From</label>
+            <input name="from" type="date" defaultValue={fromDate}
+              className="bg-[#0d0f15] border border-[#1e2130] rounded-lg px-3 py-2 text-sm text-[#f0f2f8] focus:outline-none focus:border-indigo-500 transition-colors" />
           </div>
-        )}
-        <button type="submit" className="px-4 py-2 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 text-sm font-semibold transition-colors">
-          Apply
-        </button>
-        <a href={`${base}?tab=${tab}`} className="px-4 py-2 rounded-lg text-[#6b7280] hover:text-[#9ca3af] text-sm transition-colors">
-          Reset
-        </a>
-      </form>
+          <div>
+            <label className="block text-[11px] font-semibold text-[#6b7280] uppercase tracking-wider mb-1.5">To</label>
+            <input name="to" type="date" defaultValue={toDate}
+              className="bg-[#0d0f15] border border-[#1e2130] rounded-lg px-3 py-2 text-sm text-[#f0f2f8] focus:outline-none focus:border-indigo-500 transition-colors" />
+          </div>
+          {tab === "logs" && leaderboard.length > 0 && (
+            <div>
+              <label className="block text-[11px] font-semibold text-[#6b7280] uppercase tracking-wider mb-1.5">Member</label>
+              <select name="member" defaultValue={memberFilter}
+                className="bg-[#0d0f15] border border-[#1e2130] rounded-lg px-3 py-2 text-sm text-[#f0f2f8] focus:outline-none focus:border-indigo-500 transition-colors">
+                <option value="">All</option>
+                {leaderboard.map(m => (
+                  <option key={m.user_id} value={m.user_id}>{m.full_name || m.email}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <button type="submit" className="px-4 py-2 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 text-sm font-semibold transition-colors">
+            Apply
+          </button>
+          <a href={`${base}?tab=${tab}`} className="px-4 py-2 rounded-lg text-[#6b7280] hover:text-[#9ca3af] text-sm transition-colors">
+            Reset
+          </a>
+        </form>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-[#111318] border border-[#1e2130] rounded-xl p-1 w-fit">
         {[
-          { key: "leaderboard", label: "Leaderboard", icon: Trophy     },
-          { key: "logs",        label: "Daily Logs",  icon: TrendingUp },
+          ...(isAdmin ? [
+            { key: "leaderboard", label: "Leaderboard", icon: Trophy     },
+            { key: "logs",        label: "Daily Logs",  icon: TrendingUp },
+          ] : []),
+          { key: "content", label: "Content", icon: FileVideo },
         ].map(({ key, label, icon: Icon }) => (
           <a key={key}
-            href={`${base}?tab=${key}&from=${fromDate}&to=${toDate}`}
+            href={`${base}?tab=${key}${key !== "content" ? `&from=${fromDate}&to=${toDate}` : ""}`}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
               tab === key
                 ? "bg-white/[0.07] text-white shadow-[inset_2px_0_0_0_rgba(139,92,246,0.85)]"
@@ -265,6 +281,11 @@ export default async function CRMTeamPage({
             </table>
           </div>
         )
+      )}
+
+      {/* Content tab */}
+      {tab === "content" && (
+        <ContentTab teamId={teamId} userId={user.id} subtab={subtab} base={base} />
       )}
     </div>
   );

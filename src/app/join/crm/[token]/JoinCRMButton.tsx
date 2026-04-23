@@ -20,7 +20,11 @@ export default function JoinCRMButton({ token }: { token: string }) {
         setLoading(false);
         return;
       }
-      router.push("/dashboard/crm");
+      if (data.role === "offer_owner" && data.teamId) {
+        router.push(`/dashboard/crm/manager/${data.teamId}?tab=content`);
+      } else {
+        router.push("/dashboard/crm");
+      }
     } catch {
       setError("Network error. Please try again.");
       setLoading(false);

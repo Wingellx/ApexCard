@@ -19,9 +19,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Only team managers can generate invite tokens." }, { status: 403 });
     }
 
-    const body: { email?: string; teamId?: string } = await request.json().catch(() => ({}));
-    const inviteeEmail = typeof body.email === "string" && body.email.includes("@") ? body.email.trim() : null;
-    console.log("[crm/invite] body.teamId:", body.teamId, "inviteeEmail:", inviteeEmail);
+    const body: { email?: string; teamId?: string; invitedRole?: string } = await request.json().catch(() => ({}));
+    const inviteeEmail  = typeof body.email === "string" && body.email.includes("@") ? body.email.trim() : null;
+    const invitedRole   = body.invitedRole === "offer_owner" ? "offer_owner" : "member";
+    console.log("[crm/invite] body.teamId:", body.teamId, "inviteeEmail:", inviteeEmail, "role:", invitedRole);
 
     let teamId: string;
     let teamName: string;
@@ -49,8 +50,8 @@ export async function POST(request: Request) {
       teamName = userTeam.team.name;
     }
 
-    console.log("[crm/invite] inserting token for teamId:", teamId);
-    const { token, expires_at } = await createInviteToken(teamId, user.id);
+    console.log("[crm/invite] inserting token for teamId:", teamId, "role:", invitedRole);
+    const { token, expires_at } = await createInviteToken(teamId, user.id, invitedRole as "member" | "offer_owner");
     console.log("[crm/invite] token created:", token);
     const appUrl  = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.apexcard.app";
     const joinUrl = `${appUrl}/join/crm/${token}`;

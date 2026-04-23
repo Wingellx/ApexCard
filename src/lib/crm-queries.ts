@@ -81,14 +81,18 @@ function generateShortCode(): string {
   return `${r()}${r()}${r()}-${r()}${r()}${r()}${r()}`;
 }
 
-export async function createInviteToken(teamId: string, createdBy: string) {
+export async function createInviteToken(
+  teamId: string,
+  createdBy: string,
+  invitedRole: "member" | "offer_owner" = "member"
+) {
   const admin = createAdminClient();
   const token = generateShortCode();
   const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
 
   const { data, error } = await admin
     .from("crm_invite_tokens")
-    .insert({ token, team_id: teamId, created_by: createdBy, expires_at: expiresAt })
+    .insert({ token, team_id: teamId, created_by: createdBy, expires_at: expiresAt, invited_role: invitedRole })
     .select("token, expires_at")
     .single();
 
@@ -127,7 +131,7 @@ export async function redeemInviteToken(token: string, userId: string) {
 
   const { data: invite } = await admin
     .from("crm_invite_tokens")
-    .select("id, team_id, expires_at, used_at, created_by")
+    .select("id, team_id, expires_at, used_at, created_by, invited_role")
     .eq("token", token)
     .maybeSingle();
 
@@ -144,12 +148,14 @@ export async function redeemInviteToken(token: string, userId: string) {
   if (existing?.team_id === invite.team_id) throw new Error("You are already on this team.");
   if (existing) throw new Error("You are already a member of another team. Leave your current team first.");
 
+  const role = (invite as unknown as { invited_role?: string }).invited_role ?? "member";
+
   const { error: insertError } = await admin
     .from("team_members")
     .insert({
       team_id:    invite.team_id,
       user_id:    userId,
-      role:       "member",
+      role,
       invited_by: invite.created_by,
     });
 
@@ -160,7 +166,7 @@ export async function redeemInviteToken(token: string, userId: string) {
     .update({ used_at: new Date().toISOString(), used_by: userId })
     .eq("id", invite.id);
 
-  return { teamId: invite.team_id };
+  return { teamId: invite.team_id, role };
 }
 
 export async function getManagerInviteTokens(managerId: string, teamId?: string) {
@@ -478,4 +484,97 @@ export async function getUserRankInTeam(
   const leaderboard = await getTeamLeaderboard(teamId, { from, kpi });
   const idx = leaderboard.findIndex(m => m.user_id === userId);
   return { rank: idx === -1 ? leaderboard.length + 1 : idx + 1, total: leaderboard.length };
+}
+
+// ── Content CRM ───────────────────────────────────────────────────
+
+export type ContentPost = {
+  id: string;
+  team_id: string;
+  logged_by: string;
+  platform: "instagram" | "tiktok" | "youtube" | "youtube_shorts";
+  content_type: string;
+  date_posted: string;
+  post_url: string | null;
+  views: number;
+  performance_rating: number;
+  notes: string | null;
+  content_score: number; // 0–1 from DB; multiply by 100 for %
+  created_at: string;
+  profiles?: { full_name: string | null; email: string | null };
+};
+
+export async function getTeamContentPosts(
+  teamId: string,
+  opts: { platform?: string; contentType?: string } = {}
+): Promise<ContentPost[]> {
+  const admin = createAdminClient();
+  let query = admin
+    .from("content_posts")
+    .select("*, profiles:logged_by(full_name, email)")
+    .eq("team_id", teamId)
+    .order("date_posted", { ascending: false })
+    .order("created_at",  { ascending: false })
+    .limit(500);
+
+  if (opts.platform)    query = query.eq("platform",     opts.platform);
+  if (opts.contentType) query = query.eq("content_type", opts.contentType);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []) as unknown as ContentPost[];
+}
+
+export async function logContentPost(
+  teamId: string,
+  loggedBy: string,
+  payload: {
+    platform: string;
+    content_type: string;
+    date_posted: string;
+    post_url?: string;
+    views: number;
+    performance_rating: number;
+    notes?: string;
+  }
+): Promise<ContentPost> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("content_posts")
+    .insert({ team_id: teamId, logged_by: loggedBy, ...payload })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as ContentPost;
+}
+
+// Weekly booked calls from crm_daily_logs — used in correlation chart
+export async function getWeeklyBookedCalls(
+  teamId: string,
+  fromDate: string
+): Promise<{ week: string; booked: number }[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("crm_daily_logs")
+    .select("log_date, calls_booked")
+    .eq("team_id", teamId)
+    .gte("log_date", fromDate)
+    .order("log_date", { ascending: true });
+
+  if (error) throw error;
+
+  const map = new Map<string, number>();
+  for (const row of data ?? []) {
+    const week = weekStart(row.log_date as string);
+    map.set(week, (map.get(week) ?? 0) + ((row.calls_booked as number) ?? 0));
+  }
+  return [...map.entries()].map(([week, booked]) => ({ week, booked }));
+}
+
+function weekStart(dateStr: string): string {
+  const d = new Date(dateStr);
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day; // shift to Monday
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d.toISOString().split("T")[0];
 }
