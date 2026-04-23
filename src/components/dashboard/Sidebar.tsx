@@ -30,7 +30,7 @@ function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin
       label: "Performance",
       items: [
         { href: "/dashboard",                              label: "Overview",    icon: LayoutDashboard },
-        { href: isSetter ? "/dashboard/crm" : "/dashboard/log", label: "Log Calls", icon: PhoneCall  },
+        { href: isSetter ? "/dashboard/crm" : "/dashboard/log", label: isSetter ? "CRM" : "Log Calls", icon: isSetter ? BookUser : PhoneCall },
         { href: "/dashboard/history", label: "History",     icon: History         },
         { href: "/dashboard/goals",   label: "Goals",       icon: Target          },
         { href: "/dashboard/stats",   label: "My Stats",    icon: Award           },

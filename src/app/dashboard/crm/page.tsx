@@ -11,31 +11,20 @@ export default async function CRMPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const userTeam = await getUserTeam(user.id);
-
-  if (!userTeam) {
-    return (
-      <div className="px-4 sm:px-8 py-6 sm:py-8 max-w-[900px]">
-        <h1 className="text-2xl font-extrabold text-[#f0f2f8] tracking-tight mb-6">CRM</h1>
-        <div className="bg-[#111318] border border-[#1e2130] rounded-2xl p-12 text-center">
-          <Users className="w-8 h-8 text-[#374151] mx-auto mb-3" />
-          <p className="text-sm font-semibold text-[#f0f2f8] mb-1">You&apos;re not on a team yet</p>
-          <p className="text-sm text-[#6b7280]">Ask your manager to send you an invite link to get started.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const [todayLog, logs, kpi, profile] = await Promise.all([
-    getTodayLog(user.id),
-    getMyDailyLogs(user.id, 14),
-    getTeamKpi(userTeam.teamId),
+  const [userTeam, profile] = await Promise.all([
+    getUserTeam(user.id),
     getProfileFull(user.id),
   ]);
 
   const isSetter = profile?.role === "setter";
 
-  const rankData = await getUserRankInTeam(user.id, userTeam.teamId, kpi);
+  const [todayLog, logs, kpi] = await Promise.all([
+    getTodayLog(user.id),
+    getMyDailyLogs(user.id, 14),
+    userTeam ? getTeamKpi(userTeam.teamId) : Promise.resolve(null),
+  ]);
+
+  const rankData = userTeam ? await getUserRankInTeam(user.id, userTeam.teamId, kpi) : null;
   const today    = new Date().toISOString().split("T")[0];
   const past     = logs.filter(l => l.log_date !== today);
 
@@ -71,9 +60,9 @@ export default async function CRMPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-[#f0f2f8] tracking-tight">CRM</h1>
-          <p className="text-sm text-[#6b7280] mt-0.5">{userTeam.team.name}</p>
+          {userTeam && <p className="text-sm text-[#6b7280] mt-0.5">{userTeam.team.name}</p>}
         </div>
-        {rankData.total > 1 && (
+        {rankData && rankData.total > 1 && (
           <div className="flex items-center gap-2 bg-[#111318] border border-[#1e2130] rounded-xl px-3 py-2">
             <Trophy className="w-3.5 h-3.5 text-amber-400" />
             <span className="text-xs font-semibold text-[#f0f2f8]">
@@ -83,13 +72,23 @@ export default async function CRMPage() {
         )}
       </div>
 
+      {/* Soft note — no team yet */}
+      {!userTeam && (
+        <div className="flex items-start gap-3 bg-[#111318] border border-[#1e2130] rounded-xl px-4 py-3.5">
+          <Users className="w-4 h-4 text-[#4b5563] shrink-0 mt-0.5" />
+          <p className="text-xs text-[#6b7280] leading-relaxed">
+            You&apos;re logging as a solo setter. Ask your manager for an invite link to connect with a team — your logs will sync automatically once you join.
+          </p>
+        </div>
+      )}
+
       {/* Stats strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Score (14d)",  value: Math.round(totals.score).toString() },
-          { label: "Calls Booked", value: totals.booked.toString()            },
-          { label: "Booking Rate", value: `${bookingRate}%`                   },
-          { label: "Hours Logged", value: `${totals.hours.toFixed(1)}h`       },
+          { label: "Score (14d)",   value: Math.round(totals.score).toString() },
+          { label: "Calls Booked",  value: totals.booked.toString()            },
+          { label: "Booking Rate",  value: `${bookingRate}%`                   },
+          { label: "Hours Logged",  value: `${totals.hours.toFixed(1)}h`       },
         ].map(card => (
           <div key={card.label} className="bg-[#111318] border border-[#1e2130] rounded-xl px-4 py-3">
             <p className="text-[11px] text-[#4b5563] uppercase tracking-wider mb-1">{card.label}</p>
@@ -98,24 +97,23 @@ export default async function CRMPage() {
         ))}
       </div>
 
-      {/* KPI progress (today) */}
+      {/* KPI progress — only if on a team with KPIs set */}
       {kpi && todayLog && kpiStatus && (
         <div className="bg-[#111318] border border-[#1e2130] rounded-2xl p-5">
           <p className="text-xs font-semibold text-[#4b5563] uppercase tracking-widest mb-4">Today&apos;s KPI Progress</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4">
             {KPI_DISPLAY.map(({ key, label }) => {
-              const target = Number((kpi as Record<string, unknown>)[key.replace("calls_", "").replace("_messages", "").replace("outbound_messages","outbound").replace("followup_messages","followup").replace("hours_worked","hours") + "_target"] ?? 0);
+              const tKey = key === "outbound_messages" ? "outbound_target"
+                         : key === "followup_messages" ? "followup_target"
+                         : key === "calls_pitched"     ? "pitched_target"
+                         : key === "calls_booked"      ? "booked_target"
+                         : key === "replied"           ? "replied_target"
+                         : "hours_target";
               const actual = Number((todayLog as Record<string, unknown>)[key] ?? 0);
-              const tKey   = key === "outbound_messages" ? "outbound_target"
-                           : key === "followup_messages" ? "followup_target"
-                           : key === "calls_pitched"     ? "pitched_target"
-                           : key === "calls_booked"      ? "booked_target"
-                           : key === "replied"           ? "replied_target"
-                           : "hours_target";
-              const t    = Number((kpi as Record<string, unknown>)[tKey] ?? 0);
-              const pct  = t > 0 ? Math.min(100, Math.round((actual / t) * 100)) : 0;
-              const met  = t > 0 && actual >= t;
-              const stat = kpiStatus[key];
+              const t      = Number((kpi      as Record<string, unknown>)[tKey] ?? 0);
+              const pct    = t > 0 ? Math.min(100, Math.round((actual / t) * 100)) : 0;
+              const met    = t > 0 && actual >= t;
+              const stat   = kpiStatus[key];
               return (
                 <div key={key}>
                   <div className="flex items-center justify-between mb-1">
@@ -147,7 +145,7 @@ export default async function CRMPage() {
         </div>
       )}
 
-      {/* Daily log form */}
+      {/* Daily log form — always visible */}
       <DailyLogForm today={todayLog} kpi={kpi} />
 
       {/* History */}
@@ -184,8 +182,9 @@ export default async function CRMPage() {
           </div>
         </section>
       )}
-      {/* Closed Calls — setter only */}
-      {isSetter && (
+
+      {/* Closed Calls — setter only, requires a team */}
+      {isSetter && userTeam && (
         <ClosedCallsSection userId={user.id} teamId={userTeam.teamId} />
       )}
 

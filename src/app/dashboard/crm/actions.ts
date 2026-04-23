@@ -14,7 +14,6 @@ export async function upsertDailyLog(
   if (!user) return { error: "Unauthorized." };
 
   const userTeam = await getUserTeam(user.id);
-  if (!userTeam) return { error: "You must be part of a team to submit logs." };
 
   function int(key: string) {
     const v = parseInt(formData.get(key) as string ?? "0", 10);
@@ -33,7 +32,7 @@ export async function upsertDailyLog(
     .upsert(
       {
         user_id:           user.id,
-        team_id:           userTeam.teamId,
+        team_id:           userTeam?.teamId ?? null,
         log_date:          logDate,
         outbound_messages: int("outbound_messages"),
         followup_messages: int("followup_messages"),
