@@ -37,7 +37,7 @@ export async function saveOnboardingProfile(
     if (taken) return { error: "That username is already taken. Try another." };
   }
 
-  const validRoles = ["closer", "setter", "operator", "manager", "sales_manager", "offer_owner"];
+  const validRoles = ["closer", "setter", "operator", "manager", "sales_manager"];
   const { error } = await supabase
     .from("profiles")
     .update({
@@ -144,7 +144,7 @@ export async function saveOwnerVerificationRequest(
 export async function completeOnboarding(): Promise<void> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/auth/login");
 
   const { data: profile } = await supabase
     .from("profiles")

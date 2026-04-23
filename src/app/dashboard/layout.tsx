@@ -18,15 +18,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
+  if (!user) redirect("/auth/login");
+
   const [profile, allDates, userTeam, isIOmember, teamRole] = await Promise.all([
-    user ? getProfileFull(user.id)   : Promise.resolve(null),
-    user ? getLoggedDates(user.id)   : Promise.resolve([] as string[]),
-    user ? getUserTeam(user.id)      : Promise.resolve(null),
-    user ? getIsIOmember(user.id)    : Promise.resolve(false),
-    user ? getUserTeamRole(user.id)  : Promise.resolve(null),
+    getProfileFull(user.id),
+    getLoggedDates(user.id),
+    getUserTeam(user.id),
+    getIsIOmember(user.id),
+    getUserTeamRole(user.id),
   ]);
 
-  if (profile && !profile.onboarding_completed) redirect("/onboarding");
+  if (!profile || !profile.onboarding_completed) redirect("/onboarding");
+  if (profile.account_type === "owner") redirect("/owner");
 
   const subStatus   = profile?.subscription_status ?? "trialing";
   const trialEndsAt = profile?.trial_ends_at;
