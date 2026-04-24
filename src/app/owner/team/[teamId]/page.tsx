@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileFull, getOwnerTeamDetail } from "@/lib/queries";
 import CopyInviteButton from "@/components/owner/CopyInviteButton";
+import CloserCrmPanel from "@/components/owner/CloserCrmPanel";
 import { signout } from "@/app/auth/actions";
 import {
   ArrowLeft, Shield, Users, ChevronRight,
@@ -189,8 +190,9 @@ export default async function OwnerTeamDetailPage({
               {team.members.map((member, i) => (
                 <div
                   key={member.userId}
-                  className={`flex items-center justify-between gap-4 px-5 py-3.5 ${i > 0 ? "border-t border-white/[0.04]" : ""}`}
+                  className={i > 0 ? "border-t border-white/[0.04]" : ""}
                 >
+                <div className="flex items-center justify-between gap-4 px-5 py-3.5">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/15 to-indigo-500/15 border border-violet-500/15 flex items-center justify-center shrink-0">
                       {member.teamRole === "admin"
@@ -230,6 +232,14 @@ export default async function OwnerTeamDetailPage({
                       </Link>
                     )}
                   </div>
+                </div>
+
+                {/* Closer CRM panel — shows today's custom log fields */}
+                {member.role === "closer" && (
+                  <div className="px-5 pb-3">
+                    <CloserCrmPanel memberId={member.userId} memberName={member.name ?? "Closer"} />
+                  </div>
+                )}
                 </div>
               ))}
             </div>

@@ -3,11 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import { getUserTeam, getProfileFull } from "@/lib/queries";
 import { getMyDailyLogs, getTodayLog, getUserRankInTeam, getTeamKpi, computeScore, getKpiStatus } from "@/lib/crm-queries";
 import { getPreviewRole } from "@/lib/preview";
+import { getCloserFields, getTodayCloserLog, getCloserLogHistory } from "@/lib/closer-crm-queries";
+import { ensureDefaultFields } from "./closer-field-actions";
 import DailyLogForm from "@/components/crm/DailyLogForm";
 import ClosedCallsSection from "@/components/crm/ClosedCallsSection";
 import CallRecordsTab from "@/components/crm/CallRecordsTab";
 import ImprovementTab from "@/components/crm/ImprovementTab";
 import CrmTabs from "@/components/crm/CrmTabs";
+import CloserLogTab from "@/components/crm/CloserLogTab";
 import { Users, Trophy, TrendingUp } from "lucide-react";
 
 export default async function CRMPage({
@@ -35,21 +38,36 @@ export default async function CRMPage({
 
   const tab = typeof resolvedParams.tab === "string" ? resolvedParams.tab : "log";
 
+  // ── Closer-specific data ──────────────────────────────────────
+  let closerFields   = [] as Awaited<ReturnType<typeof getCloserFields>>;
+  let closerToday    = {} as Awaited<ReturnType<typeof getTodayCloserLog>>;
+  let closerHistory  = [] as Awaited<ReturnType<typeof getCloserLogHistory>>;
+
+  if (isCloser && tab === "log") {
+    await ensureDefaultFields();
+    closerFields  = await getCloserFields(user.id);
+    [closerToday, closerHistory] = await Promise.all([
+      getTodayCloserLog(user.id, closerFields),
+      getCloserLogHistory(user.id, 14),
+    ]);
+  }
+
+  // ── Setter / shared data ──────────────────────────────────────
   const [todayLog, logs, kpi] = await Promise.all([
-    getTodayLog(user.id),
-    getMyDailyLogs(user.id, 14),
+    !isCloser ? getTodayLog(user.id) : Promise.resolve(null),
+    !isCloser ? getMyDailyLogs(user.id, 14) : Promise.resolve([]),
     userTeam ? getTeamKpi(userTeam.teamId) : Promise.resolve(null),
   ]);
 
   const rankData = userTeam ? await getUserRankInTeam(user.id, userTeam.teamId, kpi) : null;
   const today    = new Date().toISOString().split("T")[0];
-  const past     = logs.filter(l => l.log_date !== today);
+  const past     = logs.filter((l: { log_date: string }) => l.log_date !== today);
 
   const totals = logs.reduce(
-    (acc, l) => ({
-      score:   acc.score   + computeScore(l, kpi),
-      booked:  acc.booked  + l.calls_booked,
-      pitched: acc.pitched + l.calls_pitched,
+    (acc: { score: number; booked: number; pitched: number; hours: number }, l: Record<string, unknown>) => ({
+      score:   acc.score   + computeScore(l as Parameters<typeof computeScore>[0], kpi),
+      booked:  acc.booked  + (l.calls_booked  as number),
+      pitched: acc.pitched + (l.calls_pitched as number),
       hours:   acc.hours   + Number(l.hours_worked),
     }),
     { score: 0, booked: 0, pitched: 0, hours: 0 }
@@ -90,9 +108,7 @@ export default async function CRMPage({
       </div>
 
       {/* Closer tabs */}
-      {isCloser && (
-        <CrmTabs active={tab} />
-      )}
+      {isCloser && <CrmTabs active={tab} />}
 
       {/* ── Closer: Call Records tab ── */}
       {isCloser && tab === "records" && (
@@ -104,8 +120,17 @@ export default async function CRMPage({
         <ImprovementTab userId={user.id} />
       )}
 
-      {/* ── Daily log tab (default for all roles) ── */}
-      {(!isCloser || tab === "log") && (
+      {/* ── Closer: Daily Log tab ── */}
+      {isCloser && tab === "log" && (
+        <CloserLogTab
+          fields={closerFields}
+          todayValues={closerToday}
+          history={closerHistory}
+        />
+      )}
+
+      {/* ── Setter / other roles: Daily log ── */}
+      {!isCloser && (
         <>
           {/* Soft note — no team yet */}
           {!userTeam && (
@@ -180,7 +205,7 @@ export default async function CRMPage({
             </div>
           )}
 
-          {/* Daily log form — always visible */}
+          {/* Daily log form */}
           <DailyLogForm today={todayLog} kpi={kpi} />
 
           {/* History */}
@@ -200,16 +225,16 @@ export default async function CRMPage({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1e2130]">
-                    {past.map(l => (
-                      <tr key={l.id} className="hover:bg-white/[0.02] transition-colors">
-                        <td className="px-3 py-2.5 text-[#6b7280] text-xs whitespace-nowrap">{l.log_date}</td>
-                        <td className="px-3 py-2.5 text-[#9ca3af] text-xs text-right">{l.outbound_messages}</td>
-                        <td className="px-3 py-2.5 text-[#9ca3af] text-xs text-right">{l.followup_messages}</td>
-                        <td className="px-3 py-2.5 text-[#9ca3af] text-xs text-right">{l.calls_pitched}</td>
-                        <td className="px-3 py-2.5 text-emerald-400 text-xs text-right font-semibold">{l.calls_booked}</td>
-                        <td className="px-3 py-2.5 text-[#9ca3af] text-xs text-right">{l.replied}</td>
+                    {past.map((l: Record<string, unknown>) => (
+                      <tr key={l.id as string} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="px-3 py-2.5 text-[#6b7280] text-xs whitespace-nowrap">{l.log_date as string}</td>
+                        <td className="px-3 py-2.5 text-[#9ca3af] text-xs text-right">{l.outbound_messages as number}</td>
+                        <td className="px-3 py-2.5 text-[#9ca3af] text-xs text-right">{l.followup_messages as number}</td>
+                        <td className="px-3 py-2.5 text-[#9ca3af] text-xs text-right">{l.calls_pitched as number}</td>
+                        <td className="px-3 py-2.5 text-emerald-400 text-xs text-right font-semibold">{l.calls_booked as number}</td>
+                        <td className="px-3 py-2.5 text-[#9ca3af] text-xs text-right">{l.replied as number}</td>
                         <td className="px-3 py-2.5 text-[#9ca3af] text-xs text-right">{Number(l.hours_worked).toFixed(1)}</td>
-                        <td className="px-3 py-2.5 text-indigo-300 text-xs text-right font-bold">{Math.round(computeScore(l, kpi))}</td>
+                        <td className="px-3 py-2.5 text-indigo-300 text-xs text-right font-bold">{Math.round(computeScore(l as Parameters<typeof computeScore>[0], kpi))}</td>
                       </tr>
                     ))}
                   </tbody>
