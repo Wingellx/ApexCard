@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileFull, getLoggedDates, calculateStreak, getUserTeam, getUserTeamRole } from "@/lib/queries";
 import { getIsIOmember } from "@/lib/io-queries";
+import { getIsSetByOffersMember } from "@/lib/offers-queries";
 import { getPreviewRole, previewRoleLabel } from "@/lib/preview";
 import Sidebar from "@/components/dashboard/Sidebar";
 import PreviewBanner from "@/components/owner/PreviewBanner";
@@ -24,12 +25,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const previewRole = await getPreviewRole();
 
-  const [profile, allDates, userTeam, isIOmember, teamRole] = await Promise.all([
+  const [profile, allDates, userTeam, isIOmember, teamRole, isSetByOffers] = await Promise.all([
     getProfileFull(user.id),
     getLoggedDates(user.id),
     getUserTeam(user.id),
     getIsIOmember(user.id),
     getUserTeamRole(user.id),
+    getIsSetByOffersMember(user.id),
   ]);
 
   if (!profile || !profile.onboarding_completed) redirect("/onboarding");
@@ -78,6 +80,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         isTeamAdmin={effectiveTeamAdmin}
         isCRMenabled={effectiveCRM}
         role={effectiveRole}
+        isSetByOffers={isPreview ? false : isSetByOffers}
       />
       <div className="lg:ml-64 pt-14 lg:pt-0">
         {isPreview && <PreviewBanner role={previewRole!} />}

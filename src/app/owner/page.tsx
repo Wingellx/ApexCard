@@ -14,13 +14,14 @@ import {
 } from "@/lib/queries";
 import ShortlistButton from "./ShortlistButton";
 import ProcessTiersButton from "./ProcessTiersButton";
+import PostOfferForm from "./PostOfferForm";
 import { signout } from "@/app/auth/actions";
 import { approveTeamById, declineTeamById, setPreviewRole } from "./actions";
 import { PREVIEW_ROLES } from "@/lib/preview";
 import {
   Clock, Search, ExternalLink, ShieldCheck, Mail,
   Star, Users, Briefcase, BarChart3, Shield, ChevronRight,
-  CheckCircle2, XCircle, CalendarDays, User, Eye,
+  CheckCircle2, XCircle, CalendarDays, User, Eye, LayoutGrid,
 } from "lucide-react";
 
 const fmt = (n: number) =>
@@ -364,7 +365,15 @@ function FullPortal({
               <p className="text-[11px] text-[#4b5563] mt-0.5">{reps.length} rep{reps.length !== 1 ? "s" : ""}</p>
             </div>
           </div>
-          <SignOutForm />
+          <div className="flex items-center gap-4">
+            <Link
+              href="/offers"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-colors"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" /> Offer Board
+            </Link>
+            <SignOutForm />
+          </div>
         </div>
       </div>
 
@@ -444,6 +453,9 @@ function FullPortal({
           </p>
           <ProcessTiersButton />
         </div>
+
+        {/* SetByOffers — Post an Offer */}
+        <PostOfferForm />
 
         {/* All reps */}
         <div>

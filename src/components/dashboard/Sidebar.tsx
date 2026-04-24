@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, PhoneCall, Target, History, Award,
-  Settings, LogOut, Menu, X, Trophy, User, Flame, Users, Zap, Shield, Dumbbell, BarChart3, BookUser,
+  Settings, LogOut, Menu, X, Trophy, User, Flame, Users, Zap, Shield, Dumbbell, BarChart3, BookUser, Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signout } from "@/app/auth/actions";
@@ -21,9 +21,10 @@ interface SidebarProps {
   isTeamAdmin?: boolean;
   isCRMenabled?: boolean;
   role?: string | null;
+  isSetByOffers?: boolean;
 }
 
-function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin?: boolean, isCRMenabled?: boolean, role?: string | null) {
+function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin?: boolean, isCRMenabled?: boolean, role?: string | null, isSetByOffers?: boolean) {
   const isSetter = role === "setter";
   const isCloser = role === "closer";
   const useCRM   = isSetter || isCloser;
@@ -48,6 +49,7 @@ function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin
           { href: "/dashboard/team/training", label: "Training",                                  icon: Dumbbell },
           ...(isTeamAdmin ? [{ href: "/dashboard/team/admin", label: "Admin", icon: Shield }] : []),
         ] : []),
+        ...(isSetByOffers ? [{ href: "/offers", label: "Offer Board", icon: Briefcase }] : []),
       ],
     },
     ...(isCRMenabled ? [{
@@ -76,8 +78,8 @@ function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin
   ];
 }
 
-export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId, isIOmember, isTeamAdmin, isCRMenabled, role }: SidebarProps) {
-  const sections = buildSections(teamId, isIOmember, isTeamAdmin, isCRMenabled, role);
+export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId, isIOmember, isTeamAdmin, isCRMenabled, role, isSetByOffers }: SidebarProps) {
+  const sections = buildSections(teamId, isIOmember, isTeamAdmin, isCRMenabled, role, isSetByOffers);
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
