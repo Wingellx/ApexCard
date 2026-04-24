@@ -4,7 +4,14 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AnalysisResult } from "@/lib/call-analysis-queries";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Lazily-initialised so a missing key doesn't crash the module at cold-start.
+// The guard inside POST will catch it and return a 500 before any DB work.
+function getOpenAIClient() {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is not configured.");
+  }
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 const SYSTEM_PROMPT =
   "You are an elite sales coach specialising in high-ticket remote sales. " +
@@ -51,6 +58,7 @@ export async function POST(request: Request) {
     // Call OpenAI
     let analysis: AnalysisResult;
     try {
+      const openai = getOpenAIClient();
       const completion = await openai.chat.completions.create({
         model:           "gpt-4o",
         response_format: { type: "json_object" },
@@ -97,10 +105,12 @@ export async function POST(request: Request) {
     }
 
     // Recalculate monthly metrics (best-effort — don't fail the response if this errors)
-    try {
-      await recalculateMetrics(admin, user.id, record.call_date as string);
-    } catch (metricErr) {
-      console.error("[analyse-call] metric recalc error:", metricErr);
+    if (record.call_date) {
+      try {
+        await recalculateMetrics(admin, user.id, record.call_date as string);
+      } catch (metricErr) {
+        console.error("[analyse-call] metric recalc error:", metricErr);
+      }
     }
 
     return NextResponse.json({ success: true, analysis });
@@ -115,9 +125,12 @@ export async function POST(request: Request) {
 type AdminClient = ReturnType<typeof createAdminClient>;
 
 async function recalculateMetrics(admin: AdminClient, userId: string, callDate: string) {
-  const d = new Date(callDate);
-  const monthStart = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split("T")[0];
-  const monthEnd   = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split("T")[0];
+  // Parse the DATE string as UTC to avoid timezone off-by-one issues.
+  // e.g. "2024-04-01" parsed without suffix uses local time, which on UTC-N
+  // servers shifts the date to the previous day/month.
+  const d = new Date(callDate + "T00:00:00Z");
+  const monthStart = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString().split("T")[0];
+  const monthEnd   = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).toISOString().split("T")[0];
 
   const { data: monthCalls } = await admin
     .from("closer_call_records")

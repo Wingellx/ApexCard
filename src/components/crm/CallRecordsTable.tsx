@@ -263,7 +263,7 @@ function AnalysisPanel({ analysis }: { analysis: AnalysisResult }) {
           <div className="bg-rose-500/[0.04] border border-rose-500/15 rounded-xl px-4 py-3.5">
             <p className="text-[11px] font-bold text-rose-400/80 uppercase tracking-wider mb-2">Key Mistakes</p>
             <ul className="space-y-1">
-              {analysis.key_mistakes.map((m, i) => (
+              {(analysis.key_mistakes ?? []).map((m, i) => (
                 <li key={i} className="flex gap-2 text-xs text-[#9ca3af]">
                   <span className="text-rose-500/50 shrink-0 mt-0.5">•</span>{m}
                 </li>
@@ -275,7 +275,7 @@ function AnalysisPanel({ analysis }: { analysis: AnalysisResult }) {
           <div className="bg-emerald-500/[0.04] border border-emerald-500/15 rounded-xl px-4 py-3.5">
             <p className="text-[11px] font-bold text-emerald-400/80 uppercase tracking-wider mb-2">Key Strengths</p>
             <ul className="space-y-1">
-              {analysis.key_strengths.map((s, i) => (
+              {(analysis.key_strengths ?? []).map((s, i) => (
                 <li key={i} className="flex gap-2 text-xs text-[#9ca3af]">
                   <span className="text-emerald-500/50 shrink-0 mt-0.5">•</span>{s}
                 </li>

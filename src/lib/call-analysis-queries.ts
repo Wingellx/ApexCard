@@ -95,9 +95,13 @@ export async function getCallObjectionsByMonth(userId: string): Promise<{
 }> {
   const admin = createAdminClient();
   const now = new Date();
-  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(),     1).toISOString().split("T")[0];
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split("T")[0];
-  const lastMonthEnd   = new Date(now.getFullYear(), now.getMonth(),     0).toISOString().split("T")[0];
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+  // Use Date.UTC so .toISOString().split("T")[0] always gives the correct date
+  // regardless of the server's local timezone.
+  const thisMonthStart = new Date(Date.UTC(y, m,     1)).toISOString().split("T")[0];
+  const lastMonthStart = new Date(Date.UTC(y, m - 1, 1)).toISOString().split("T")[0];
+  const lastMonthEnd   = new Date(Date.UTC(y, m,     0)).toISOString().split("T")[0];
 
   const [thisRes, lastRes] = await Promise.all([
     admin.from("closer_call_records").select("id").eq("user_id", userId).gte("call_date", thisMonthStart),
