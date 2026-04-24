@@ -16,7 +16,7 @@ import ShortlistButton from "./ShortlistButton";
 import ProcessTiersButton from "./ProcessTiersButton";
 import PostOfferForm from "./PostOfferForm";
 import { signout } from "@/app/auth/actions";
-import { approveTeamById, declineTeamById, setPreviewRole } from "./actions";
+import { approveTeamById, declineTeamById, setPreviewRole, enterSBOAdminMode } from "./actions";
 import { PREVIEW_ROLES } from "@/lib/preview";
 import {
   Clock, Search, ExternalLink, ShieldCheck, Mail,
@@ -334,6 +334,31 @@ function PreviewAsSection() {
   );
 }
 
+// ── SetByOffers Admin demo section ────────────────────────────
+
+function SBOAdminSection() {
+  return (
+    <div className="bg-[#0f1117] border border-cyan-500/20 rounded-2xl p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Briefcase className="w-3.5 h-3.5 text-cyan-400" />
+        <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest">SetByOffers Demo</p>
+      </div>
+      <p className="text-xs text-[#4b5563] mb-4 leading-relaxed">
+        View the offer board as Arun (SetByOffers admin) with full access to post new offers. Session-only — no database changes.
+      </p>
+      <form action={enterSBOAdminMode}>
+        <button
+          type="submit"
+          className="text-xs font-semibold px-4 py-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/20 hover:border-cyan-400/40 transition-colors flex items-center gap-2"
+        >
+          <Briefcase className="w-3.5 h-3.5" />
+          View as SetByOffers Admin
+        </button>
+      </form>
+    </div>
+  );
+}
+
 // ── Full portal ───────────────────────────────────────────────
 
 function FullPortal({
@@ -397,6 +422,9 @@ function FullPortal({
 
         {/* Preview As */}
         <PreviewAsSection />
+
+        {/* SetByOffers Admin Demo */}
+        <SBOAdminSection />
 
         {/* Search */}
         <form method="GET" className="relative">
