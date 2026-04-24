@@ -25,12 +25,14 @@ interface SidebarProps {
 
 function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin?: boolean, isCRMenabled?: boolean, role?: string | null) {
   const isSetter = role === "setter";
+  const isCloser = role === "closer";
+  const useCRM   = isSetter || isCloser;
   return [
     {
       label: "Performance",
       items: [
         { href: "/dashboard",                              label: "Overview",    icon: LayoutDashboard },
-        { href: isSetter ? "/dashboard/crm" : "/dashboard/log", label: isSetter ? "CRM" : "Log Calls", icon: isSetter ? BookUser : PhoneCall },
+        { href: useCRM ? "/dashboard/crm" : "/dashboard/log", label: useCRM ? "CRM" : "Log Calls", icon: useCRM ? BookUser : PhoneCall },
         { href: "/dashboard/history", label: "History",     icon: History         },
         { href: "/dashboard/goals",   label: "Goals",       icon: Target          },
         { href: "/dashboard/stats",   label: "My Stats",    icon: Award           },
