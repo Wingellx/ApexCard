@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getUserTeam, getProfileFull } from "@/lib/queries";
 import { getMyDailyLogs, getTodayLog, getUserRankInTeam, getTeamKpi, computeScore, getKpiStatus } from "@/lib/crm-queries";
+import { getPreviewRole } from "@/lib/preview";
 import DailyLogForm from "@/components/crm/DailyLogForm";
 import ClosedCallsSection from "@/components/crm/ClosedCallsSection";
 import CallRecordsTab from "@/components/crm/CallRecordsTab";
@@ -20,13 +21,17 @@ export default async function CRMPage({
 
   const resolvedParams = await searchParams;
 
-  const [userTeam, profile] = await Promise.all([
+  const [userTeam, profile, previewRole] = await Promise.all([
     getUserTeam(user.id),
     getProfileFull(user.id),
+    getPreviewRole(),
   ]);
 
-  const isSetter = profile?.role === "setter";
-  const isCloser = profile?.role === "closer";
+  const isPreview     = profile?.account_type === "owner" && !!previewRole;
+  const effectiveRole = isPreview ? previewRole! : (profile?.role ?? null);
+
+  const isSetter = effectiveRole === "setter";
+  const isCloser = effectiveRole === "closer";
 
   const tab = typeof resolvedParams.tab === "string" ? resolvedParams.tab : "log";
 
