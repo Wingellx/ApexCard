@@ -168,10 +168,10 @@ export default async function IODashboardPage() {
         ))}
       </div>
 
-      {/* ── Daily Debrief ───────────────────────────────────────────────── */}
+      {/* ── Daily Check-in ──────────────────────────────────────────────── */}
       <div>
         <SectionLabel>
-          {pref === "daily" ? "Daily" : "Weekly"} Debrief
+          {pref === "daily" ? "Daily" : "Weekly"} Check-in
         </SectionLabel>
 
         {checkedIn ? (
@@ -211,7 +211,7 @@ export default async function IODashboardPage() {
             <details className="group">
               <summary className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#6b7280] hover:text-white transition-colors list-none select-none mb-3">
                 <RefreshCw className="w-3.5 h-3.5" />
-                Update debrief
+                Update check-in
                 <span className="group-open:hidden">▸</span>
                 <span className="hidden group-open:inline">▾</span>
               </summary>
@@ -225,7 +225,7 @@ export default async function IODashboardPage() {
                 <Clock className="w-5 h-5 text-white/40" />
               </div>
               <div>
-                <p className="font-semibold text-sm text-[#f0f2f8]">No debrief {periodLabel}</p>
+                <p className="font-semibold text-sm text-[#f0f2f8]">No check-in {periodLabel}</p>
                 <p className="text-xs text-[#6b7280]">Log your workout, work, and execution below.</p>
               </div>
             </div>
@@ -302,7 +302,7 @@ export default async function IODashboardPage() {
         <div className="bg-[#111318] border border-[#1e2130] rounded-xl p-5 flex items-center justify-between gap-4">
           <div>
             <p className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-widest mb-0.5">Execution trend</p>
-            <p className="text-sm text-[#9ca3af]">Last {averages.history.length} debriefs</p>
+            <p className="text-sm text-[#9ca3af]">Last {averages.history.length} check-ins</p>
           </div>
           <Sparkline data={averages.history} />
         </div>

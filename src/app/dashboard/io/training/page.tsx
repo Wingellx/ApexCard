@@ -1,14 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { getTrainingSplit, getGymStreak, getRecentCheckins } from "@/lib/io-queries";
+import { getTrainingSplit, getGymStreak, getRecentCheckins, getTrainingExercises } from "@/lib/io-queries";
 import { DAY_LABELS, DAY_FULL, todayDayOfWeek } from "@/lib/io-score";
 import TrainingSplitEditor from "./TrainingSplitEditor";
+import BodySection from "./BodySection";
 import { Flame, Dumbbell, Lock } from "lucide-react";
 
-// Get the dates for the current Mon–Sun week
 function getWeekDates(): string[] {
   const today = new Date();
-  const dow = today.getDay(); // 0=Sun
+  const dow = today.getDay();
   const monday = new Date(today);
   monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
   return Array.from({ length: 7 }, (_, i) => {
@@ -18,8 +18,8 @@ function getWeekDates(): string[] {
   });
 }
 
-const REST_SESSIONS = ["Rest", "rest", "OFF", "off", ""];
-function isRest(name: string) { return REST_SESSIONS.some(r => r === name.trim()); }
+const REST_SESSIONS = ["rest", "off", ""];
+function isRest(name: string) { return REST_SESSIONS.includes(name.trim().toLowerCase()); }
 
 export default async function TrainingPage() {
   const supabase = await createClient();
@@ -27,18 +27,18 @@ export default async function TrainingPage() {
   if (!user) redirect("/auth/login");
 
   const weekDates = getWeekDates();
-  const todayDOW  = todayDayOfWeek(); // 1=Mon…7=Sun
+  const todayDOW  = todayDayOfWeek();
 
-  const [trainingSplitResult, gymStreak, recentCheckins] = await Promise.all([
+  const [trainingSplitResult, gymStreak, recentCheckins, exercises] = await Promise.all([
     getTrainingSplit(user.id),
     getGymStreak(user.id),
     getRecentCheckins(user.id, 14),
+    getTrainingExercises(user.id),
   ]);
 
   const { split, isAdminAssigned } = trainingSplitResult;
   const hasSplit = Object.keys(split).length > 0;
 
-  // Map date → workout_completed
   const completedDates = new Set(
     recentCheckins.filter(c => c.workout_completed).map(c => c.checkin_date)
   );
@@ -50,8 +50,8 @@ export default async function TrainingPage() {
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-extrabold text-[#f0f2f8] tracking-tight">Training Split</h1>
-          <p className="text-sm text-[#6b7280] mt-1">Your weekly schedule and completion log.</p>
+          <h1 className="text-2xl font-extrabold text-[#f0f2f8] tracking-tight">Training</h1>
+          <p className="text-sm text-[#6b7280] mt-1">Your weekly split, exercises, and body metrics.</p>
         </div>
         {gymStreak > 0 && (
           <div className="flex items-center gap-1.5 px-3 py-2 bg-orange-500/[0.07] border border-orange-500/[0.12] rounded-lg">
@@ -64,11 +64,12 @@ export default async function TrainingPage() {
       {/* Weekly calendar */}
       <div className="grid grid-cols-7 gap-2">
         {weekDates.map((date, i) => {
-          const dow       = i + 1; // 1=Mon
+          const dow       = i + 1;
           const session   = split[dow] ?? DEFAULT_SESSIONS[i];
           const isToday   = dow === todayDOW;
           const isRestDay = isRest(session);
           const done      = completedDates.has(date);
+          const exCount   = exercises[dow]?.length ?? 0;
 
           return (
             <div
@@ -101,12 +102,15 @@ export default async function TrainingPage() {
               }`}>
                 {session || "—"}
               </p>
+              {!isRestDay && exCount > 0 && (
+                <p className="text-[8px] text-[#2d3147]">{exCount}ex</p>
+              )}
             </div>
           );
         })}
       </div>
 
-      {/* Split editor or read-only notice */}
+      {/* Admin-assigned notice */}
       {isAdminAssigned ? (
         <div className="bg-[#111318] border border-violet-500/20 rounded-2xl p-6 flex items-center gap-4">
           <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
@@ -119,18 +123,22 @@ export default async function TrainingPage() {
         </div>
       ) : !hasSplit ? (
         <div className="bg-[#111318] border border-dashed border-[#1e2130] rounded-2xl p-8 text-center">
-          <p className="font-semibold text-[#f0f2f8] mb-1">No split assigned yet</p>
-          <p className="text-sm text-[#6b7280]">Your coach hasn&apos;t set your split yet. Set one yourself below.</p>
+          <p className="font-semibold text-[#f0f2f8] mb-1">No split set yet</p>
+          <p className="text-sm text-[#6b7280]">Click any day below to set your session and add exercises.</p>
         </div>
       ) : null}
 
+      {/* Split editor */}
       {!isAdminAssigned && (
         <div className="bg-[#111318] border border-[#1e2130] rounded-2xl p-6">
           <p className="text-sm font-semibold text-[#f0f2f8] mb-1">Edit your split</p>
-          <p className="text-xs text-[#6b7280] mb-5">Set session names for each day. Use &ldquo;Rest&rdquo; for off days.</p>
-          <TrainingSplitEditor split={split} dayLabels={DAY_FULL} />
+          <p className="text-xs text-[#6b7280] mb-5">Click a day to expand it, set the session type, and add your exercises.</p>
+          <TrainingSplitEditor split={split} exercises={exercises} dayLabels={DAY_FULL} />
         </div>
       )}
+
+      {/* Body metrics */}
+      <BodySection userId={user.id} />
     </div>
   );
 }

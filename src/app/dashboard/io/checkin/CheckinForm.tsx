@@ -95,7 +95,7 @@ export default function CheckinForm({ pref, existing }: Props) {
 
   useEffect(() => {
     if (state?.success) {
-      success("Debrief saved!");
+      success("Check-in saved!");
       router.push("/dashboard/io");
     }
     if (state?.error) toastError(state.error);
@@ -169,7 +169,7 @@ export default function CheckinForm({ pref, existing }: Props) {
         className="w-full flex items-center justify-center gap-2 bg-white hover:bg-white/90 disabled:opacity-50 text-black font-semibold py-3.5 rounded-xl transition-colors shadow-lg shadow-white/10"
       >
         {isPending ? "Saving…" : (
-          <><CheckCircle2 className="w-4 h-4" /> {existing ? "Update debrief" : "Submit debrief"}</>
+          <><CheckCircle2 className="w-4 h-4" /> {existing ? "Update check-in" : "Submit check-in"}</>
         )}
       </button>
     </form>

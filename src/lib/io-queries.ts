@@ -96,6 +96,35 @@ export async function getTrainingSplit(userId: string): Promise<{
   return { split, isAdminAssigned };
 }
 
+// ── Training exercises ────────────────────────────────────────────────────────
+
+export interface TrainingExercise {
+  id: string;
+  day_of_week: number;
+  exercise_order: number;
+  exercise_name: string;
+  sets: number | null;
+  reps: string | null;
+  weight: string | null;
+}
+
+export async function getTrainingExercises(userId: string): Promise<Record<number, TrainingExercise[]>> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("training_exercises")
+    .select("id, day_of_week, exercise_order, exercise_name, sets, reps, weight")
+    .eq("user_id", userId)
+    .order("day_of_week")
+    .order("exercise_order");
+
+  const result: Record<number, TrainingExercise[]> = {};
+  (data ?? []).forEach(ex => {
+    if (!result[ex.day_of_week]) result[ex.day_of_week] = [];
+    result[ex.day_of_week].push(ex as TrainingExercise);
+  });
+  return result;
+}
+
 // ── Body metrics ──────────────────────────────────────────────────────────────
 
 export async function getBodyMetrics(userId: string, limit = 30) {

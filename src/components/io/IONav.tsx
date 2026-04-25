@@ -3,14 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Zap, Target, Dumbbell, Trophy, Activity } from "lucide-react";
+import { Zap, Target, Dumbbell, Trophy } from "lucide-react";
 
 const tabs = [
   { href: "/dashboard/io",             label: "Dashboard",  icon: Zap      },
-  { href: "/dashboard/io/checkin",     label: "Debrief",    icon: Target   },
+  { href: "/dashboard/io/checkin",     label: "Check-in",   icon: Target   },
   { href: "/dashboard/io/training",    label: "Training",   icon: Dumbbell },
   { href: "/dashboard/io/leaderboard", label: "Leaderboard",icon: Trophy   },
-  { href: "/dashboard/io/body",        label: "Body",       icon: Activity },
 ];
 
 export default function IONav() {

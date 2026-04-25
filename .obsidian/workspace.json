@@ -177,5 +177,7 @@
     }
   },
   "active": "92b28178dc404a4b",
-  "lastOpenFiles": []
+  "lastOpenFiles": [
+    "src/app/dashboard/io/training/BodySection.tsx"
+  ]
 }

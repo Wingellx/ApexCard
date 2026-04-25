@@ -61,11 +61,7 @@ function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin
     ...(isIOmember ? [{
       label: "IO Community",
       items: [
-        { href: "/dashboard/io",             label: "IO Dashboard", icon: Zap    },
-        { href: "/dashboard/io/checkin",     label: "Debrief",      icon: Target },
-        { href: "/dashboard/io/training",    label: "Training",     icon: Award  },
-        { href: "/dashboard/io/leaderboard", label: "IO Board",     icon: Trophy },
-        { href: "/dashboard/io/body",        label: "Body",         icon: Users  },
+        { href: "/dashboard/io", label: "IO Dashboard", icon: Zap },
       ],
     }] : []),
     {
@@ -86,7 +82,7 @@ export default function Sidebar({ userName, userEmail, userRole, userInitial, st
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === href;
-    if (href === "/dashboard/io") return pathname === href;
+    if (href === "/dashboard/io") return pathname.startsWith("/dashboard/io");
     return pathname === href || pathname.startsWith(href + "/");
   }
 
