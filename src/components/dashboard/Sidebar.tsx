@@ -21,10 +21,9 @@ interface SidebarProps {
   isTeamAdmin?: boolean;
   isCRMenabled?: boolean;
   role?: string | null;
-  isSetByOffers?: boolean;
 }
 
-function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin?: boolean, isCRMenabled?: boolean, role?: string | null, isSetByOffers?: boolean) {
+function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin?: boolean, isCRMenabled?: boolean, role?: string | null) {
   const isSetter = role === "setter";
   const isCloser = role === "closer";
   const useCRM   = isSetter || isCloser;
@@ -44,12 +43,12 @@ function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin
       items: [
         { href: "/leaderboard",             label: "Leaderboard", icon: Trophy  },
         { href: "/leaderboard/communities", label: "Rankings",    icon: BarChart3 },
+        { href: "/offers",                  label: "Offer Board", icon: Briefcase },
         ...(teamId ? [
           { href: "/dashboard/team",          label: isIOmember ? "Brotherhood ⚔️" : "Team",     icon: Users    },
           { href: "/dashboard/team/training", label: "Training",                                  icon: Dumbbell },
           ...(isTeamAdmin ? [{ href: "/dashboard/team/admin", label: "Admin", icon: Shield }] : []),
         ] : []),
-        ...(isSetByOffers ? [{ href: "/offers", label: "Offer Board", icon: Briefcase }] : []),
       ],
     },
     ...(isCRMenabled ? [{
@@ -78,8 +77,8 @@ function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin
   ];
 }
 
-export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId, isIOmember, isTeamAdmin, isCRMenabled, role, isSetByOffers }: SidebarProps) {
-  const sections = buildSections(teamId, isIOmember, isTeamAdmin, isCRMenabled, role, isSetByOffers);
+export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId, isIOmember, isTeamAdmin, isCRMenabled, role }: SidebarProps) {
+  const sections = buildSections(teamId, isIOmember, isTeamAdmin, isCRMenabled, role);
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 

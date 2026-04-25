@@ -26,7 +26,7 @@ export default function PostOfferForm() {
       <div className="border-b border-[#1e2130] px-5 py-4 flex items-center gap-2">
         <Briefcase className="w-3.5 h-3.5 text-cyan-400" />
         <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest">
-          SetByOffers — Post a Role
+          Offer Board — Post a Role
         </p>
       </div>
 

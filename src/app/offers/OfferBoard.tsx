@@ -11,18 +11,11 @@ import type { Offer, OfferRoleType } from "@/lib/offers-queries";
 
 // ── Branding ─────────────────────────────────────────────────────
 
-function SetByOffersLogo() {
+function ApexCardLogo() {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/30">
-        <Briefcase className="w-4 h-4 text-white" />
-      </div>
-      <div className="leading-none">
-        <span className="text-[17px] font-black text-white tracking-tight">SetBy</span>
-        <span className="text-[17px] font-black tracking-tight bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-          Offers
-        </span>
-      </div>
+      <img src="/logo.svg" alt="ApexCard" className="w-7 h-7" />
+      <span className="text-[17px] font-black text-[#f0f2f8] tracking-tight">ApexCard</span>
     </div>
   );
 }
@@ -159,7 +152,7 @@ function ApplyModal({
       {/* Panel */}
       <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-[#06080e] border border-[#151c2e] rounded-2xl shadow-2xl shadow-blue-900/20">
         {/* Top accent */}
-        <div className="h-[2px] rounded-t-2xl bg-gradient-to-r from-cyan-500 to-blue-600" />
+        <div className="h-[2px] rounded-t-2xl bg-gradient-to-r from-violet-500 to-indigo-600" />
 
         <div className="p-6">
           {/* Header */}
@@ -242,9 +235,9 @@ function ApplyModal({
           </div>
 
           {/* Speed-up note */}
-          <div className="bg-gradient-to-r from-cyan-500/[0.05] to-blue-600/[0.05] border border-cyan-500/20 rounded-xl p-4">
+          <div className="bg-gradient-to-r from-violet-500/[0.05] to-indigo-600/[0.05] border border-violet-500/20 rounded-xl p-4">
             <p className="text-sm text-[#6b7280] leading-relaxed mb-3">
-              <span className="text-cyan-300 font-semibold">Speed up your application</span> — include your ApexCard stats link so the offer owner can verify your performance instantly.
+              <span className="text-violet-300 font-semibold">Speed up your application</span> — include your ApexCard stats link so the offer owner can verify your performance instantly.
             </p>
             {profileUrl ? (
               <button
@@ -253,7 +246,7 @@ function ApplyModal({
                   "inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-lg border transition-all duration-200",
                   copied
                     ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                    : "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border-cyan-500/20 hover:border-cyan-400/40"
+                    : "bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border-violet-500/20 hover:border-violet-400/40"
                 )}
               >
                 {copied ? (
@@ -265,7 +258,7 @@ function ApplyModal({
             ) : (
               <Link
                 href="/auth/signup"
-                className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/20 hover:border-cyan-400/40 transition-all duration-200"
+                className="inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/20 hover:border-violet-400/40 transition-all duration-200"
               >
                 <ExternalLink className="w-3.5 h-3.5" /> Create your ApexCard
               </Link>
@@ -300,16 +293,16 @@ export default function OfferBoard({
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(135deg, #0c2035 0%, #061020 50%, #040810 100%)",
+              "linear-gradient(135deg, #0e0c20 0%, #090812 50%, #060610 100%)",
           }}
         />
-        <div className="absolute top-[-60px] left-[10%] w-[400px] h-[400px] bg-cyan-500/[0.05] rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-[-40px] right-[10%] w-[400px] h-[400px] bg-blue-600/[0.07] rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-[-60px] left-[10%] w-[400px] h-[400px] bg-violet-500/[0.05] rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-[-40px] right-[10%] w-[400px] h-[400px] bg-indigo-600/[0.07] rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative max-w-5xl mx-auto px-6 pt-6 pb-14">
           {/* Top nav */}
           <div className="flex items-center justify-between mb-12">
-            <SetByOffersLogo />
+            <ApexCardLogo />
             <Link
               href="/dashboard"
               className="inline-flex items-center gap-1.5 text-xs font-medium text-[#2d4a60] hover:text-[#4a7fa0] transition-colors"
@@ -323,11 +316,11 @@ export default function OfferBoard({
             <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight mb-2">
               Find your next role.
             </h1>
-            <p className="text-base font-semibold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent mb-2">
+            <p className="text-base font-semibold bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent mb-2">
               Verified by ApexCard.
             </p>
             <p className="text-sm text-[#2d4a60] max-w-sm mx-auto">
-              Exclusive opportunities for SetByOffers members — every role verified by a top sales community.
+              Curated sales roles posted by verified ApexCard owners.
             </p>
           </div>
         </div>
