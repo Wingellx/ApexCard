@@ -953,3 +953,17 @@ export async function getPendingOwnerRequests() {
     profiles: { email: string } | null;
   }>;
 }
+
+
+// ── Custom Features ───────────────────────────────────────────────────────────
+
+export async function getUserCustomFeature(userId: string, feature: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("custom_features")
+    .select("enabled")
+    .eq("user_id", userId)
+    .eq("feature", feature)
+    .maybeSingle();
+  return data?.enabled === true;
+}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, PhoneCall, Target, History, Award,
-  Settings, LogOut, Menu, X, Trophy, User, Flame, Users, Zap, Shield, Dumbbell, BarChart3, BookUser, Briefcase,
+  Settings, LogOut, Menu, X, Trophy, User, Flame, Users, Zap, Shield, Dumbbell, BarChart3, BookUser, Briefcase, TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signout } from "@/app/auth/actions";
@@ -21,9 +21,10 @@ interface SidebarProps {
   isTeamAdmin?: boolean;
   isCRMenabled?: boolean;
   role?: string | null;
+  hasKPIDashboard?: boolean;
 }
 
-function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin?: boolean, isCRMenabled?: boolean, role?: string | null) {
+function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin?: boolean, isCRMenabled?: boolean, role?: string | null, hasKPIDashboard?: boolean) {
   const isSetter = role === "setter";
   const isCloser = role === "closer";
   const useCRM   = isSetter || isCloser;
@@ -64,6 +65,12 @@ function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin
         { href: "/dashboard/io", label: "IO Dashboard", icon: Zap },
       ],
     }] : []),
+    ...(hasKPIDashboard ? [{
+      label: "Tools",
+      items: [
+        { href: "/dashboard/kpi", label: "KPI Dashboard", icon: TrendingUp },
+      ],
+    }] : []),
     {
       label: "Account",
       items: [
@@ -73,8 +80,8 @@ function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin
   ];
 }
 
-export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId, isIOmember, isTeamAdmin, isCRMenabled, role }: SidebarProps) {
-  const sections = buildSections(teamId, isIOmember, isTeamAdmin, isCRMenabled, role);
+export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId, isIOmember, isTeamAdmin, isCRMenabled, role, hasKPIDashboard }: SidebarProps) {
+  const sections = buildSections(teamId, isIOmember, isTeamAdmin, isCRMenabled, role, hasKPIDashboard);
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
