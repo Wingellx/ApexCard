@@ -70,13 +70,13 @@ export default function CloserCRMShell({ fields: serverFields, todayValues, hist
 
   return (
     <div className="space-y-6">
-      {/* Edit Fields button — top right */}
+      {/* Edit Fields button — subtle, top right */}
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-[#4b5563] uppercase tracking-widest">Daily Log</p>
+        <p className="text-[10px] font-bold text-[#2d3147] uppercase tracking-[0.18em]">Daily Log</p>
         <button
           type="button"
           onClick={() => setMode("edit")}
-          className="flex items-center gap-1.5 text-[11px] font-semibold text-[#6b7280] hover:text-[#9ca3af] bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] rounded-lg px-3 py-1.5 transition-colors"
+          className="flex items-center gap-1.5 text-[11px] font-medium text-[#374151] hover:text-[#6b7280] transition-colors"
         >
           <Pencil className="w-3 h-3" />
           Edit Fields
