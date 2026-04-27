@@ -58,12 +58,38 @@ function buildSparkData(
     byDate.set(log.log_date, (byDate.get(log.log_date) ?? 0) + val);
   }
 
-  // Build last 30 days scaffold so every day is represented
   const result: { date: string; value: number }[] = [];
   for (let i = 29; i >= 0; i--) {
     const d = new Date(Date.now() - i * 86_400_000);
     const iso = d.toISOString().split("T")[0];
     result.push({ date: iso, value: byDate.get(iso) ?? 0 });
+  }
+  return result;
+}
+
+// ── Close % sparkline (derived from calls_taken + calls_closed per day) ───────
+
+function buildClosePctSparkData(
+  logs: CrmCustomLog[],
+  takenId: string,
+  closedId: string
+): { date: string; value: number }[] {
+  const byDate = new Map<string, { taken: number; closed: number }>();
+  for (const log of logs) {
+    if (log.field_id !== takenId && log.field_id !== closedId) continue;
+    if (!byDate.has(log.log_date)) byDate.set(log.log_date, { taken: 0, closed: 0 });
+    const entry = byDate.get(log.log_date)!;
+    if (log.field_id === takenId)  entry.taken  += log.value_number ?? 0;
+    if (log.field_id === closedId) entry.closed += log.value_number ?? 0;
+  }
+
+  const result: { date: string; value: number }[] = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86_400_000);
+    const iso = d.toISOString().split("T")[0];
+    const entry = byDate.get(iso);
+    const value = entry && entry.taken > 0 ? Math.round((entry.closed / entry.taken) * 100) : 0;
+    result.push({ date: iso, value });
   }
   return result;
 }
@@ -110,6 +136,32 @@ export default async function CRMStatsPage() {
     lastMonth:  lastMonthTotals.get(f.id) ?? 0,
     spark:      buildSparkData(last30Logs, f.id),
   }));
+
+  // Inject derived Close % stat after Calls Closed if both tracking fields exist
+  const takenField  = activeFields.find(f => f.field_name === "calls_taken");
+  const closedField = activeFields.find(f => f.field_name === "calls_closed");
+  if (takenField && closedField) {
+    const thisTaken  = thisMonthTotals.get(takenField.id)  ?? 0;
+    const thisClosed = thisMonthTotals.get(closedField.id) ?? 0;
+    const lastTaken  = lastMonthTotals.get(takenField.id)  ?? 0;
+    const lastClosed = lastMonthTotals.get(closedField.id) ?? 0;
+
+    const derivedStat: FieldStat = {
+      fieldId:    "__close_pct__",
+      fieldLabel: "Close %",
+      fieldType:  "percent",
+      thisMonth:  thisTaken  > 0 ? (thisClosed  / thisTaken)  * 100 : 0,
+      lastMonth:  lastTaken  > 0 ? (lastClosed  / lastTaken)  * 100 : 0,
+      spark:      buildClosePctSparkData(last30Logs, takenField.id, closedField.id),
+    };
+
+    const insertAfter = stats.findIndex(s => s.fieldId === closedField.id);
+    if (insertAfter !== -1) {
+      stats.splice(insertAfter + 1, 0, derivedStat);
+    } else {
+      stats.push(derivedStat);
+    }
+  }
 
   const streak        = computeStreak(allLogDates);
   const totalDaysLogged = new Set(allLogDates).size;

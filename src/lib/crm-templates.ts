@@ -20,13 +20,12 @@ export const CRM_TEMPLATES: Record<TemplateKey, {
   closer: {
     label: "Closer",
     description: "Track daily call performance and revenue",
-    fieldLabels: ["Calls Taken", "Calls Closed", "Total Revenue", "Close %", "No Shows"],
+    fieldLabels: ["Calls Taken", "Calls Closed", "Total Revenue", "No Shows"],
     fields: [
-      { field_name: "calls_taken",   field_label: "Calls Taken",   field_type: "number",  field_order: 0, is_active: true },
-      { field_name: "calls_closed",  field_label: "Calls Closed",  field_type: "number",  field_order: 1, is_active: true },
-      { field_name: "total_revenue", field_label: "Total Revenue", field_type: "number",  field_order: 2, is_active: true },
-      { field_name: "close_pct",     field_label: "Close %",       field_type: "number",  field_order: 3, is_active: true },
-      { field_name: "no_shows",      field_label: "No Shows",      field_type: "number",  field_order: 4, is_active: true },
+      { field_name: "calls_taken",   field_label: "Calls Taken",   field_type: "number", field_order: 0, is_active: true },
+      { field_name: "calls_closed",  field_label: "Calls Closed",  field_type: "number", field_order: 1, is_active: true },
+      { field_name: "total_revenue", field_label: "Total Revenue", field_type: "number", field_order: 2, is_active: true },
+      { field_name: "no_shows",      field_label: "No Shows",      field_type: "number", field_order: 3, is_active: true },
     ],
   },
   setter: {

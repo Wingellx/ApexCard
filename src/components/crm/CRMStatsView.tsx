@@ -33,6 +33,7 @@ function fmtValue(type: string, n: number): string {
     return `${h}h ${m}m`;
   }
   if (type === "boolean") return `${n}d`;
+  if (type === "percent") return `${Math.round(n)}%`;
   return n % 1 === 0 ? n.toLocaleString() : n.toFixed(1);
 }
 

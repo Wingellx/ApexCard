@@ -71,9 +71,83 @@ function DurationInput({ name, defaultMinutes }: { name: string; defaultMinutes:
   );
 }
 
+// ── Number input — optionally controlled ──────────────────────────────────────
+
+function NumberInput({
+  name,
+  defaultVal,
+  controlled,
+  onChange,
+}: {
+  name: string;
+  defaultVal: number | null;
+  controlled?: number;
+  onChange?: (v: number) => void;
+}) {
+  const isControlled = onChange !== undefined;
+  const sharedCls = "w-28 h-14 bg-[#0d0f15] border border-[#1e2130] rounded-xl text-2xl font-bold text-[#f0f2f8] text-center focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 transition-colors placeholder-[#2a2f45]";
+
+  if (isControlled) {
+    return (
+      <input
+        type="number"
+        name={name}
+        min="0"
+        step="any"
+        placeholder="0"
+        value={controlled === 0 ? "" : (controlled ?? "")}
+        onChange={e => onChange(Math.max(0, parseFloat(e.target.value) || 0))}
+        className={sharedCls}
+      />
+    );
+  }
+
+  return (
+    <input
+      type="number"
+      name={name}
+      min="0"
+      step="any"
+      placeholder="0"
+      defaultValue={defaultVal ?? ""}
+      className={sharedCls}
+    />
+  );
+}
+
+// ── Derived Close % row ───────────────────────────────────────────────────────
+
+function ClosePctRow({ taken, closed }: { taken: number; closed: number }) {
+  const pct = taken > 0 ? Math.round((closed / taken) * 100) : null;
+
+  return (
+    <div className="flex items-center justify-between gap-6 px-6 py-5 border-b border-[#13161e] bg-[#0d0f15]/40">
+      <div>
+        <p className="text-sm font-medium text-[#6b7280]">Close %</p>
+        <p className="text-[10px] text-[#2a2f45] mt-0.5 uppercase tracking-wider">Calculated</p>
+      </div>
+      <div className="flex items-center justify-center w-28 h-14">
+        <span className={`text-2xl font-bold tabular-nums ${pct !== null ? "text-indigo-300" : "text-[#2a2f45]"}`}>
+          {pct !== null ? `${pct}%` : "—"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ── Field row ─────────────────────────────────────────────────────────────────
 
-function FieldRow({ field, defaultValue }: { field: CrmFieldDef; defaultValue: LogValueMap[string] | undefined }) {
+function FieldRow({
+  field,
+  defaultValue,
+  controlled,
+  onControlledChange,
+}: {
+  field: CrmFieldDef;
+  defaultValue: LogValueMap[string] | undefined;
+  controlled?: number;
+  onControlledChange?: (v: number) => void;
+}) {
   const name = `field_${field.id}`;
 
   return (
@@ -88,14 +162,11 @@ function FieldRow({ field, defaultValue }: { field: CrmFieldDef; defaultValue: L
           <DurationInput name={name} defaultMinutes={defaultValue?.number ?? null} />
         )}
         {field.field_type === "number" && (
-          <input
-            type="number"
+          <NumberInput
             name={name}
-            min="0"
-            step="any"
-            placeholder="0"
-            defaultValue={defaultValue?.number ?? ""}
-            className="w-28 h-14 bg-[#0d0f15] border border-[#1e2130] rounded-xl text-2xl font-bold text-[#f0f2f8] text-center focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 transition-colors placeholder-[#2a2f45]"
+            defaultVal={defaultValue?.number ?? null}
+            controlled={controlled}
+            onChange={onControlledChange}
           />
         )}
         {field.field_type === "text" && (
@@ -126,6 +197,15 @@ export default function CloserLogForm({ fields, todayValues, onOpenEdit }: Props
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   const activeFields = fields.filter(f => f.is_active);
+
+  // Detect Calls Taken / Calls Closed for derived Close % display
+  const takenField  = activeFields.find(f => f.field_name === "calls_taken");
+  const closedField = activeFields.find(f => f.field_name === "calls_closed");
+  const showClosePct = !!(takenField && closedField);
+
+  const [callsTaken,  setCallsTaken]  = useState<number>(todayValues[takenField?.id  ?? ""]?.number ?? 0);
+  const [callsClosed, setCallsClosed] = useState<number>(todayValues[closedField?.id ?? ""]?.number ?? 0);
+
   const today = new Date().toISOString().split("T")[0];
   const dateLabel = new Date(`${today}T12:00:00`).toLocaleDateString("en-US", {
     weekday: "long", month: "long", day: "numeric",
@@ -182,11 +262,26 @@ export default function CloserLogForm({ fields, todayValues, onOpenEdit }: Props
         </div>
       </div>
 
-      {/* Field rows */}
+      {/* Field rows — inject ClosePctRow after calls_closed */}
       <div>
-        {activeFields.map(f => (
-          <FieldRow key={f.id} field={f} defaultValue={todayValues[f.id]} />
-        ))}
+        {activeFields.map(f => {
+          const isTrackedTaken  = showClosePct && f.id === takenField!.id;
+          const isTrackedClosed = showClosePct && f.id === closedField!.id;
+
+          return (
+            <div key={f.id}>
+              <FieldRow
+                field={f}
+                defaultValue={todayValues[f.id]}
+                controlled={isTrackedTaken ? callsTaken : isTrackedClosed ? callsClosed : undefined}
+                onControlledChange={isTrackedTaken ? setCallsTaken : isTrackedClosed ? setCallsClosed : undefined}
+              />
+              {isTrackedClosed && (
+                <ClosePctRow taken={callsTaken} closed={callsClosed} />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Error */}
