@@ -34,6 +34,7 @@ function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin
       items: [
         { href: "/dashboard",                              label: "Overview",    icon: LayoutDashboard },
         { href: useCRM ? "/dashboard/crm" : "/dashboard/log", label: useCRM ? "CRM" : "Log Calls", icon: useCRM ? BookUser : PhoneCall },
+        ...(useCRM ? [{ href: "/dashboard/crm-stats", label: "CRM Stats", icon: BarChart3 }] : []),
         { href: "/dashboard/history", label: "History",     icon: History         },
         { href: "/dashboard/goals",   label: "Goals",       icon: Target          },
         { href: "/dashboard/stats",   label: "My Stats",    icon: Award           },

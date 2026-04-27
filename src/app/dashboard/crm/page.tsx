@@ -4,13 +4,12 @@ import { getUserTeam, getProfileFull } from "@/lib/queries";
 import { getMyDailyLogs, getTodayLog, getUserRankInTeam, getTeamKpi, computeScore, getKpiStatus } from "@/lib/crm-queries";
 import { getPreviewRole } from "@/lib/preview";
 import { getCloserFields, getTodayCloserLog, getCloserLogHistory } from "@/lib/closer-crm-queries";
-import { ensureDefaultFields } from "./closer-field-actions";
 import DailyLogForm from "@/components/crm/DailyLogForm";
 import ClosedCallsSection from "@/components/crm/ClosedCallsSection";
 import CallRecordsTab from "@/components/crm/CallRecordsTab";
 import ImprovementTab from "@/components/crm/ImprovementTab";
 import CrmTabs from "@/components/crm/CrmTabs";
-import CloserLogTab from "@/components/crm/CloserLogTab";
+import CloserCRMShell from "@/components/crm/CloserCRMShell";
 import { Users, Trophy, TrendingUp } from "lucide-react";
 
 export default async function CRMPage({
@@ -44,7 +43,6 @@ export default async function CRMPage({
   let closerHistory  = [] as Awaited<ReturnType<typeof getCloserLogHistory>>;
 
   if (isCloser && tab === "log") {
-    await ensureDefaultFields();
     closerFields  = await getCloserFields(user.id);
     [closerToday, closerHistory] = await Promise.all([
       getTodayCloserLog(user.id, closerFields),
@@ -122,7 +120,7 @@ export default async function CRMPage({
 
       {/* ── Closer: Daily Log tab ── */}
       {isCloser && tab === "log" && (
-        <CloserLogTab
+        <CloserCRMShell
           fields={closerFields}
           todayValues={closerToday}
           history={closerHistory}

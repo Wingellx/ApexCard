@@ -14,9 +14,17 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }
 
+function formatDuration(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins % 60);
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
 function formatValue(log: CrmCustomLog, field: CrmFieldDef): string {
   if (field.field_type === "boolean")  return log.value_boolean ? "Yes" : "No";
-  if (field.field_type === "duration") return log.value_number != null ? `${log.value_number}m` : "—";
+  if (field.field_type === "duration") return log.value_number != null ? formatDuration(log.value_number) : "—";
   if (field.field_type === "text")     return log.value_text?.trim() || "—";
   return log.value_number != null ? String(log.value_number) : "—";
 }

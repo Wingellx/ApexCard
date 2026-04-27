@@ -29,14 +29,6 @@ export interface CrmCustomLog {
 
 export type LogValueMap = Record<string, { number: number | null; boolean: boolean | null; text: string | null }>;
 
-export const DEFAULT_CLOSER_FIELDS: Omit<CrmFieldDef, "id" | "user_id" | "team_id" | "created_at">[] = [
-  { field_name: "calls_taken",        field_label: "Calls Taken",        field_type: "number",  field_order: 0, is_active: true },
-  { field_name: "calls_closed",       field_label: "Calls Closed",       field_type: "number",  field_order: 1, is_active: true },
-  { field_name: "total_revenue",      field_label: "Total Revenue ($)",   field_type: "number",  field_order: 2, is_active: true },
-  { field_name: "objections_handled", field_label: "Objections Handled", field_type: "number",  field_order: 3, is_active: true },
-  { field_name: "no_shows",           field_label: "No Shows",           field_type: "number",  field_order: 4, is_active: true },
-];
-
 export async function getCloserFields(userId: string): Promise<CrmFieldDef[]> {
   const supabase = await createClient();
   const { data } = await supabase
@@ -71,7 +63,6 @@ export async function getTodayCloserLog(userId: string, fields: CrmFieldDef[]): 
 
 export async function getCloserLogHistory(userId: string, days = 14): Promise<CrmCustomLog[]> {
   const supabase = await createClient();
-  // Use a date-range filter so the limit isn't sensitive to field count
   const since = new Date();
   since.setDate(since.getDate() - days);
   const sinceStr = since.toISOString().split("T")[0];
@@ -84,6 +75,48 @@ export async function getCloserLogHistory(userId: string, days = 14): Promise<Cr
     .order("log_date", { ascending: false });
 
   return (data ?? []) as CrmCustomLog[];
+}
+
+export async function getCloserMonthLogs(userId: string, year: number, month: number): Promise<CrmCustomLog[]> {
+  const supabase = await createClient();
+  const start = `${year}-${String(month).padStart(2, "0")}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const end   = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+  const { data } = await supabase
+    .from("crm_custom_logs")
+    .select("*")
+    .eq("user_id", userId)
+    .gte("log_date", start)
+    .lte("log_date", end);
+
+  return (data ?? []) as CrmCustomLog[];
+}
+
+export async function getCloserLast30DaysLogs(userId: string): Promise<CrmCustomLog[]> {
+  const supabase = await createClient();
+  const since = new Date();
+  since.setDate(since.getDate() - 30);
+  const sinceStr = since.toISOString().split("T")[0];
+
+  const { data } = await supabase
+    .from("crm_custom_logs")
+    .select("*")
+    .eq("user_id", userId)
+    .gte("log_date", sinceStr)
+    .order("log_date", { ascending: true });
+
+  return (data ?? []) as CrmCustomLog[];
+}
+
+export async function getCloserAllLogDates(userId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("crm_custom_logs")
+    .select("log_date")
+    .eq("user_id", userId);
+
+  return [...new Set((data ?? []).map(r => (r as { log_date: string }).log_date))];
 }
 
 // Admin-level: read a team member's fields + logs (for manager view)
