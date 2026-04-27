@@ -23,8 +23,10 @@ export default function CloserCRMShell({ fields: serverFields, todayValues, hist
   // true once any template (including custom) has been chosen this session
   const [setupStarted, setSetupStarted] = useState(serverFields.length > 0);
 
-  // Sync from server after router.refresh()
-  useEffect(() => { setFields(serverFields); }, [serverFields]);
+  // Sync from server after router.refresh(), but never overwrite valid local state with empty data
+  useEffect(() => {
+    setFields(prev => serverFields.length > 0 ? serverFields : prev);
+  }, [serverFields]);
 
   function handleFieldsChange(updated: CrmFieldDef[]) {
     setFields(updated);
@@ -42,7 +44,8 @@ export default function CloserCRMShell({ fields: serverFields, todayValues, hist
           setSetupStarted(true);
           setFields(newFields);
           setMode(openEdit ? "edit" : "log");
-          router.refresh();
+          // No router.refresh() — revalidatePath in applyTemplate handles future cache invalidation;
+          // local state is already populated from the server action's return value
         }}
       />
     );
