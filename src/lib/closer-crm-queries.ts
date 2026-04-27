@@ -30,11 +30,11 @@ export interface CrmCustomLog {
 export type LogValueMap = Record<string, { number: number | null; boolean: boolean | null; text: string | null }>;
 
 export const DEFAULT_CLOSER_FIELDS: Omit<CrmFieldDef, "id" | "user_id" | "team_id" | "created_at">[] = [
-  { field_name: "calls_taken",          field_label: "Calls Taken",          field_type: "number",  field_order: 0, is_active: true },
-  { field_name: "calls_closed",         field_label: "Calls Closed",         field_type: "number",  field_order: 1, is_active: true },
-  { field_name: "total_revenue",        field_label: "Total Revenue ($)",     field_type: "number",  field_order: 2, is_active: true },
-  { field_name: "objections_handled",   field_label: "Objections Handled",   field_type: "number",  field_order: 3, is_active: true },
-  { field_name: "no_shows",             field_label: "No Shows",             field_type: "number",  field_order: 4, is_active: true },
+  { field_name: "calls_taken",        field_label: "Calls Taken",        field_type: "number",  field_order: 0, is_active: true },
+  { field_name: "calls_closed",       field_label: "Calls Closed",       field_type: "number",  field_order: 1, is_active: true },
+  { field_name: "total_revenue",      field_label: "Total Revenue ($)",   field_type: "number",  field_order: 2, is_active: true },
+  { field_name: "objections_handled", field_label: "Objections Handled", field_type: "number",  field_order: 3, is_active: true },
+  { field_name: "no_shows",           field_label: "No Shows",           field_type: "number",  field_order: 4, is_active: true },
 ];
 
 export async function getCloserFields(userId: string): Promise<CrmFieldDef[]> {
@@ -71,12 +71,18 @@ export async function getTodayCloserLog(userId: string, fields: CrmFieldDef[]): 
 
 export async function getCloserLogHistory(userId: string, days = 14): Promise<CrmCustomLog[]> {
   const supabase = await createClient();
+  // Use a date-range filter so the limit isn't sensitive to field count
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  const sinceStr = since.toISOString().split("T")[0];
+
   const { data } = await supabase
     .from("crm_custom_logs")
     .select("*")
     .eq("user_id", userId)
-    .order("log_date", { ascending: false })
-    .limit(days * 20);
+    .gte("log_date", sinceStr)
+    .order("log_date", { ascending: false });
+
   return (data ?? []) as CrmCustomLog[];
 }
 

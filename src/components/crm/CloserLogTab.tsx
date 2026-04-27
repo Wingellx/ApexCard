@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Settings, X, ChevronDown, ChevronUp } from "lucide-react";
 import type { CrmFieldDef, LogValueMap, CrmCustomLog } from "@/lib/closer-crm-queries";
 import CloserDailyLogForm from "./CloserDailyLogForm";
@@ -13,13 +14,29 @@ interface Props {
   history: CrmCustomLog[];
 }
 
-export default function CloserLogTab({ fields, todayValues, history }: Props) {
+export default function CloserLogTab({ fields: serverFields, todayValues, history }: Props) {
+  const router = useRouter();
   const [builderOpen, setBuilderOpen] = useState(false);
+
+  // Single source of truth for fields — syncs from server on refresh
+  const [fields, setFields] = useState<CrmFieldDef[]>(serverFields);
+  useEffect(() => { setFields(serverFields); }, [serverFields]);
+
+  // Builder calls this after any mutation; we update local state immediately
+  // and trigger a server refresh to get real IDs / confirmed state.
+  function handleFieldsChange(updated: CrmFieldDef[]) {
+    setFields(updated);
+    router.refresh();
+  }
+
+  // Key based on active field IDs: forces form remount when the field set changes,
+  // so defaultValues are applied correctly from the latest todayValues.
+  const activeKey = fields.filter(f => f.is_active).map(f => f.id).join(",");
 
   return (
     <div className="space-y-6">
 
-      {/* Header row with Customise Fields button */}
+      {/* Header row */}
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-[#4b5563] uppercase tracking-widest">Daily Log</p>
         <button
@@ -46,12 +63,16 @@ export default function CloserLogTab({ fields, todayValues, history }: Props) {
               <X className="w-4 h-4" />
             </button>
           </div>
-          <CloserFieldBuilder initialFields={fields} />
+          <CloserFieldBuilder
+            fields={fields}
+            onFieldsChange={handleFieldsChange}
+          />
         </div>
       )}
 
-      {/* Daily log form */}
+      {/* Daily log form — remounts when active fields change */}
       <CloserDailyLogForm
+        key={activeKey}
         fields={fields}
         todayValues={todayValues}
         onOpenBuilder={() => setBuilderOpen(true)}
