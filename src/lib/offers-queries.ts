@@ -42,7 +42,6 @@ export interface OfferApplication {
   offer_id: string;
   user_id: string;
   status: ApplicationStatus;
-  cover_note: string | null;
   applied_at: string;
   expires_at: string;
   offer_title: string;
@@ -65,7 +64,6 @@ export interface OwnerApplication {
   rep_days_logged: number;
   rep_total_closed: number;
   status: ApplicationStatus;
-  cover_note: string | null;
   applied_at: string;
   expires_at: string;
 }
@@ -134,7 +132,7 @@ export async function getMyApplications(userId: string): Promise<OfferApplicatio
   const admin = createAdminClient();
   const { data } = await admin
     .from("offer_applications")
-    .select("id, offer_id, user_id, status, cover_note, applied_at, expires_at, offers(title, company_name)")
+    .select("id, offer_id, user_id, status, applied_at, expires_at, offers(title, company_name)")
     .eq("user_id", userId)
     .order("applied_at", { ascending: false });
 
@@ -143,7 +141,6 @@ export async function getMyApplications(userId: string): Promise<OfferApplicatio
     offer_id: string;
     user_id: string;
     status: ApplicationStatus;
-    cover_note: string | null;
     applied_at: string;
     expires_at: string;
     offers: { title: string; company_name: string } | null;
@@ -156,7 +153,6 @@ export async function getMyApplications(userId: string): Promise<OfferApplicatio
       offer_id:      row.offer_id,
       user_id:       row.user_id,
       status:        row.status,
-      cover_note:    row.cover_note,
       applied_at:    row.applied_at,
       expires_at:    row.expires_at,
       offer_title:   row.offers?.title        ?? "Unknown Offer",
@@ -179,7 +175,7 @@ export async function getOwnerApplications(ownerUserId: string): Promise<OwnerAp
 
   const { data: apps } = await admin
     .from("offer_applications")
-    .select("id, offer_id, user_id, status, cover_note, applied_at, expires_at, profiles(full_name, email, username, is_verified, verification_active)")
+    .select("id, offer_id, user_id, status, applied_at, expires_at, profiles(full_name, email, username, is_verified, verification_active)")
     .in("offer_id", offerIds)
     .order("applied_at", { ascending: false });
 
@@ -190,7 +186,6 @@ export async function getOwnerApplications(ownerUserId: string): Promise<OwnerAp
     offer_id: string;
     user_id: string;
     status: ApplicationStatus;
-    cover_note: string | null;
     applied_at: string;
     expires_at: string;
     profiles: { full_name: string | null; email: string | null; username: string | null; is_verified: boolean | null; verification_active: boolean | null } | null;
@@ -239,7 +234,6 @@ export async function getOwnerApplications(ownerUserId: string): Promise<OwnerAp
       rep_days_logged:         stats.daysLogged,
       rep_total_closed:        stats.totalClosed,
       status:                  app.status,
-      cover_note:              app.cover_note,
       applied_at:              app.applied_at,
       expires_at:              app.expires_at,
     };

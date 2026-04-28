@@ -8,8 +8,7 @@ import { buildApplicationSubmittedEmail, buildApplicationStatusEmail } from "@/l
 import type { ApplicationStatus } from "@/lib/offers-queries";
 
 export async function submitApplication(
-  offerId: string,
-  coverNote: string
+  offerId: string
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -46,7 +45,6 @@ export async function submitApplication(
       offer_id:   offerId,
       user_id:    user.id,
       status:     "submitted",
-      cover_note: coverNote.trim() || null,
       applied_at: appliedAt,
       expires_at: expiresAt,
     });
@@ -75,17 +73,16 @@ export async function submitApplication(
       const closed = logs.reduce((a, l) => a + (l.offers_taken ?? 0), 0);
 
       const email = buildApplicationSubmittedEmail({
-        ownerName:    owner.full_name ?? "there",
-        repName:      rep?.full_name  ?? "A rep",
-        repEmail:     rep?.email      ?? "",
-        repUsername:  rep?.username   ?? null,
-        repRole:      rep?.role       ?? null,
-        isVerified:   (rep as { is_verified?: boolean } | null)?.is_verified ?? false,
-        lifetimeCash: cash,
-        closeRate:    shows > 0 ? (closed / shows) * 100 : 0,
-        daysLogged:   logs.length,
-        coverNote:    coverNote.trim() || null,
-        offerTitle:   offer.title as string,
+        ownerName:      owner.full_name ?? "there",
+        repName:        rep?.full_name  ?? "A rep",
+        repEmail:       rep?.email      ?? "",
+        repUsername:    rep?.username   ?? null,
+        repRole:        rep?.role       ?? null,
+        isVerified:     (rep as { is_verified?: boolean } | null)?.is_verified ?? false,
+        lifetimeCash:   cash,
+        closeRate:      shows > 0 ? (closed / shows) * 100 : 0,
+        daysLogged:     logs.length,
+        offerTitle:     offer.title as string,
         ownerPortalUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.apexcard.app"}/owner`,
       });
 

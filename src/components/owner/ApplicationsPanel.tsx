@@ -91,14 +91,6 @@ function ApplicationRow({ app, onStatusChange }: {
             </div>
           </div>
 
-          {/* Cover note */}
-          {app.cover_note && (
-            <div className="bg-[#0f1117] border-l-2 border-indigo-500/40 pl-3 py-2 rounded-r-xl">
-              <p className="text-[10px] font-bold text-[#4b5563] uppercase tracking-widest mb-1.5">Cover Note</p>
-              <p className="text-sm text-[#9ca3af] leading-relaxed">{app.cover_note}</p>
-            </div>
-          )}
-
           {/* Expires */}
           <p className="text-[11px] text-[#374151]">
             Expires in {daysUntil(app.expires_at)} days · {app.rep_email}

@@ -360,7 +360,6 @@ export function buildApplicationSubmittedEmail({
   lifetimeCash,
   closeRate,
   daysLogged,
-  coverNote,
   offerTitle,
   ownerPortalUrl,
 }: {
@@ -373,7 +372,6 @@ export function buildApplicationSubmittedEmail({
   lifetimeCash:   number;
   closeRate:      number;
   daysLogged:     number;
-  coverNote:      string | null;
   offerTitle:     string;
   ownerPortalUrl: string;
 }): { subject: string; html: string } {
@@ -421,12 +419,6 @@ export function buildApplicationSubmittedEmail({
         </td>
       </tr>
     </table>
-
-    ${coverNote ? `
-    <div style="background:#f8fafc;border-left:3px solid #6366f1;border-radius:0 8px 8px 0;padding:14px 18px;margin-bottom:28px;">
-      <p style="margin:0 0 6px;font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">Cover Note</p>
-      <p style="margin:0;font-size:14px;color:#374151;line-height:1.6;">${coverNote}</p>
-    </div>` : ""}
 
     <p style="margin:0 0 24px;font-size:14px;color:#374151;">
       Review this application and update the status from your Owner Portal.

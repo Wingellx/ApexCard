@@ -328,8 +328,7 @@ function OfferDetailModal({
   hasApplied:   boolean;
   userStats:    UserStats;
 }) {
-  const [coverNote, setCoverNote]   = useState("");
-  const [submitErr, setSubmitErr]   = useState<string | null>(null);
+  const [submitErr, setSubmitErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const overlayRef = useRef<HTMLDivElement>(null);
   const eligState  = getEligibilityState(offer, eligibility);
@@ -345,7 +344,7 @@ function OfferDetailModal({
   function handleSubmit() {
     setSubmitErr(null);
     startTransition(async () => {
-      const result = await submitApplication(offer.id, coverNote);
+      const result = await submitApplication(offer.id);
       if (result.error) { setSubmitErr(result.error); return; }
       setView("success");
     });
@@ -368,7 +367,7 @@ function OfferDetailModal({
             <div>
               <p className="text-lg font-extrabold text-[#f0f2f8] mb-2">Application submitted</p>
               <p className="text-sm text-[#6b7280] leading-relaxed">
-                The offer owner has been notified with your stats card and cover note.
+                The offer owner has been notified with your ApexCard stats.
               </p>
             </div>
             <button
@@ -400,21 +399,8 @@ function OfferDetailModal({
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-[#4b5563] uppercase tracking-widest block mb-1.5">
-                  Cover Note <span className="text-[#2d3147] normal-case">(optional)</span>
-                </label>
-                <textarea
-                  value={coverNote}
-                  onChange={(e) => setCoverNote(e.target.value)}
-                  rows={4}
-                  placeholder="Introduce yourself briefly — optional"
-                  className="w-full bg-[#0a0c12] border border-[#1e2130] rounded-xl px-4 py-3 text-sm text-[#f0f2f8] placeholder-[#2d3147] focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-colors resize-none"
-                />
-              </div>
-
-              <div>
                 <p className="text-[10px] font-bold text-[#4b5563] uppercase tracking-widest mb-2">
-                  Your ApexCard will be shared with the owner
+                  This will be sent to the offer owner
                 </p>
                 <StatsPreview stats={userStats} eligibility={eligibility} />
               </div>

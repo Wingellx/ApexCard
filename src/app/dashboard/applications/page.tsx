@@ -89,9 +89,7 @@ export default async function ApplicationsPage() {
                   ) : null}
                 </div>
 
-                {app.cover_note && (
-                  <p className="text-xs text-[#4b5563] mt-2 line-clamp-2 italic">"{app.cover_note}"</p>
-                )}
+
               </div>
             );
           })}
