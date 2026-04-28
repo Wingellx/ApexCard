@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export type OfferRoleType = "dm_setter" | "dialling" | "closing";
 export type B2BorB2C = "b2b" | "b2c" | "both";
-export type ApplicationStatus = "submitted" | "viewed" | "accepted" | "declined";
+export type ApplicationStatus = "submitted" | "viewed" | "interview" | "accepted" | "declined";
 
 export interface Offer {
   id: string;

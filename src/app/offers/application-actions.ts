@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/resend";
-import { buildApplicationSubmittedEmail, buildApplicationStatusEmail } from "@/lib/email";
+import { buildApplicationSubmittedEmail, buildApplicationStatusEmail, buildApplicationReceivedEmail } from "@/lib/email";
 import type { ApplicationStatus } from "@/lib/offers-queries";
 
 export async function submitApplication(
@@ -56,16 +56,33 @@ export async function submitApplication(
     .update({ application_count: (offer.application_count ?? 0) + 1 })
     .eq("id", offerId);
 
-  if (offer.posted_by) {
-    const [repResult, ownerResult, statsResult] = await Promise.all([
-      admin.from("profiles").select("full_name, email, username, is_verified, verification_active, role").eq("id", user.id).maybeSingle(),
-      admin.from("profiles").select("email, full_name").eq("id", offer.posted_by).maybeSingle(),
-      admin.from("call_logs").select("shows, offers_taken, cash_collected").eq("user_id", user.id),
-    ]);
+  const appUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.apexcard.app"}`;
 
-    const rep   = repResult.data;
-    const owner = ownerResult.data;
-    const logs  = statsResult.data ?? [];
+  const [repResult, statsResult] = await Promise.all([
+    admin.from("profiles").select("full_name, email, username, is_verified, verification_active, role").eq("id", user.id).maybeSingle(),
+    admin.from("call_logs").select("shows, offers_taken, cash_collected").eq("user_id", user.id),
+  ]);
+  const rep  = repResult.data;
+  const logs = statsResult.data ?? [];
+
+  // Confirmation email to the rep
+  if (rep?.email) {
+    const conf = buildApplicationReceivedEmail({
+      repName:    rep.full_name ?? "there",
+      offerTitle: offer.title as string,
+      company:    offer.company_name as string,
+      appUrl:     `${appUrl}/dashboard/applications`,
+    });
+    await sendEmail({ to: rep.email, subject: conf.subject, html: conf.html });
+  }
+
+  // Notification email to the owner
+  if (offer.posted_by) {
+    const { data: owner } = await admin
+      .from("profiles")
+      .select("email, full_name")
+      .eq("id", offer.posted_by)
+      .maybeSingle();
 
     if (owner?.email) {
       const cash   = logs.reduce((a, l) => a + Number(l.cash_collected ?? 0), 0);
@@ -83,15 +100,42 @@ export async function submitApplication(
         closeRate:      shows > 0 ? (closed / shows) * 100 : 0,
         daysLogged:     logs.length,
         offerTitle:     offer.title as string,
-        ownerPortalUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.apexcard.app"}/owner`,
+        ownerPortalUrl: `${appUrl}/owner`,
       });
-
       await sendEmail({ to: owner.email, subject: email.subject, html: email.html });
     }
   }
 
   revalidatePath("/offers");
   revalidatePath("/dashboard/applications");
+  return {};
+}
+
+export async function closeOffer(offerId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const admin = createAdminClient();
+
+  const { data: offer } = await admin
+    .from("offers")
+    .select("id, posted_by")
+    .eq("id", offerId)
+    .maybeSingle();
+
+  if (!offer) return { error: "Offer not found" };
+  if (offer.posted_by !== user.id) return { error: "Not authorized" };
+
+  const { error: updateError } = await admin
+    .from("offers")
+    .update({ is_active: false, fulfilled_at: new Date().toISOString() })
+    .eq("id", offerId);
+
+  if (updateError) return { error: updateError.message };
+
+  revalidatePath("/offers");
+  revalidatePath("/owner");
   return {};
 }
 

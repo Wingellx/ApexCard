@@ -432,6 +432,41 @@ export function buildApplicationSubmittedEmail({
   return { subject, html: emailShell(body) };
 }
 
+// ── Application received — rep confirmation ───────────────────────────────────
+
+export function buildApplicationReceivedEmail({
+  repName,
+  offerTitle,
+  company,
+  appUrl,
+}: {
+  repName:    string;
+  offerTitle: string;
+  company:    string;
+  appUrl:     string;
+}): { subject: string; html: string } {
+  const subject = `Application received — ${offerTitle} at ${company}`;
+
+  const body = `
+    <h2 style="margin:0 0 6px;font-size:22px;font-weight:700;color:#111827;">Application Received</h2>
+    <p style="margin:0 0 20px;font-size:15px;color:#6b7280;">Hi ${repName},</p>
+    <p style="margin:0 0 6px;font-size:14px;color:#374151;">
+      Your ApexCard has been submitted to:
+    </p>
+    <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;margin:0 0 24px;">
+      <p style="margin:0;font-size:15px;font-weight:700;color:#111827;">${offerTitle}</p>
+      <p style="margin:4px 0 0;font-size:13px;color:#6b7280;">${company}</p>
+    </div>
+    <p style="margin:0 0 28px;font-size:14px;color:#374151;line-height:1.6;">
+      The offer owner will review your stats and be in touch if you're a fit. You can track the status of this application from your ApexCard dashboard.
+    </p>
+    <p style="text-align:center;margin:0;">
+      ${ctaButton(appUrl, "Track My Application")}
+    </p>`;
+
+  return { subject, html: emailShell(body) };
+}
+
 // ── Application status update — rep notification ─────────────────────────────
 
 export function buildApplicationStatusEmail({
@@ -442,16 +477,17 @@ export function buildApplicationStatusEmail({
   appUrl,
 }: {
   repName:    string;
-  status:     "submitted" | "viewed" | "accepted" | "declined";
+  status:     "submitted" | "viewed" | "interview" | "accepted" | "declined";
   offerTitle: string;
   company:    string;
   appUrl:     string;
 }): { subject: string; html: string } {
   const statusConfig = {
-    viewed:    { label: "Application Viewed",    color: "#6366f1", msg: "Your application has been viewed by the offer owner. They'll be in touch soon." },
-    accepted:  { label: "Application Accepted",  color: "#059669", msg: "Congratulations — your application has been accepted! The offer owner will reach out with next steps." },
-    declined:  { label: "Application Declined",  color: "#dc2626", msg: "Unfortunately your application wasn't selected this time. Keep building and try again." },
-    submitted: { label: "Application Submitted", color: "#6366f1", msg: "Your application was submitted successfully." },
+    viewed:    { label: "Application Viewed",             color: "#6366f1", msg: "Your application has been viewed by the offer owner. They'll be in touch if you're a fit." },
+    interview: { label: "Selected for Interview",         color: "#d97706", msg: "You've been selected for an interview — expect contact from the offer owner shortly with next steps." },
+    accepted:  { label: "Application Accepted",           color: "#059669", msg: "Congratulations — your application has been accepted! The offer owner will reach out with next steps." },
+    declined:  { label: "Application Not Selected",       color: "#dc2626", msg: "Unfortunately your application wasn't selected this time. Keep building and try again." },
+    submitted: { label: "Application Submitted",          color: "#6366f1", msg: "Your application was submitted successfully." },
   };
 
   const cfg     = statusConfig[status];

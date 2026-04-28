@@ -7,6 +7,7 @@ import { FileText, Briefcase, CheckCircle2, Eye, X, Clock, ChevronRight } from "
 const STATUS_CONFIG = {
   submitted: { label: "Submitted", cls: "text-[#6b7280] bg-white/[0.04] border-[#1e2130]" },
   viewed:    { label: "Viewed",    cls: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20" },
+  interview: { label: "Interview", cls: "text-amber-400 bg-amber-500/10 border-amber-500/20" },
   accepted:  { label: "Accepted",  cls: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
   declined:  { label: "Declined",  cls: "text-rose-400 bg-rose-500/10 border-rose-500/20" },
 };
