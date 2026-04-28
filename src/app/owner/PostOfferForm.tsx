@@ -11,6 +11,12 @@ const ROLE_TYPES = [
   { value: "closing",   label: "Closing"   },
 ];
 
+const B2B_B2C_OPTIONS = [
+  { value: "b2b",  label: "B2B"       },
+  { value: "b2c",  label: "B2C"       },
+  { value: "both", label: "B2B + B2C" },
+];
+
 const inputClass =
   "w-full bg-[#0a0c12] border border-[#1e2130] rounded-xl px-4 py-3 text-sm text-[#f0f2f8] placeholder-[#374151] focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-colors";
 
@@ -87,6 +93,23 @@ export default function PostOfferForm() {
           </select>
         </div>
 
+        {/* B2B / B2C */}
+        <div>
+          <label htmlFor="po-b2b" className={labelClass}>Market Type *</label>
+          <select
+            id="po-b2b"
+            name="b2b_b2c"
+            required
+            defaultValue=""
+            className={cn(inputClass, "cursor-pointer")}
+          >
+            <option value="" disabled>Select market type…</option>
+            {B2B_B2C_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+
         {/* Commission */}
         <div>
           <label htmlFor="po-commission" className={labelClass}>Commission % (optional)</label>
@@ -112,6 +135,21 @@ export default function PostOfferForm() {
             min="0"
             step="0.01"
             placeholder="e.g. 2500"
+            className={inputClass}
+          />
+        </div>
+
+        {/* Application limit */}
+        <div>
+          <label htmlFor="po-app-limit" className={labelClass}>Application Limit</label>
+          <input
+            id="po-app-limit"
+            name="application_limit"
+            type="number"
+            min="1"
+            step="1"
+            defaultValue={50}
+            placeholder="50"
             className={inputClass}
           />
         </div>

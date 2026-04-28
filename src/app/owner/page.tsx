@@ -17,6 +17,8 @@ import ProcessTiersButton from "./ProcessTiersButton";
 import PostOfferForm from "./PostOfferForm";
 import { getPendingOwnerVerificationRequests } from "@/lib/verification-queries";
 import OwnerVerificationPanel from "@/components/verification/OwnerVerificationPanel";
+import ApplicationsPanel from "@/components/owner/ApplicationsPanel";
+import { getOwnerApplications } from "@/lib/offers-queries";
 import { signout } from "@/app/auth/actions";
 import { approveTeamById, declineTeamById, setPreviewRole, enterSBOAdminMode } from "./actions";
 import { PREVIEW_ROLES } from "@/lib/preview";
@@ -370,6 +372,7 @@ function FullPortal({
   teams,
   pending,
   verificationRequests,
+  ownerApplications,
 }: {
   reps:                   DiscoverableRep[];
   shortlist:              Set<string>;
@@ -377,6 +380,7 @@ function FullPortal({
   teams:                  OwnerTeamRow[];
   pending:                PendingTeamApplication[];
   verificationRequests:   import("@/lib/verification-queries").RepVerificationRequestWithRep[];
+  ownerApplications:      import("@/lib/offers-queries").OwnerApplication[];
 }) {
   const shortlisted = reps.filter((r) => shortlist.has(r.id));
 
@@ -491,6 +495,11 @@ function FullPortal({
           <OwnerVerificationPanel requests={verificationRequests} />
         )}
 
+        {/* Offer applications */}
+        {ownerApplications.length > 0 && (
+          <ApplicationsPanel applications={ownerApplications} />
+        )}
+
         {/* SetByOffers — Post an Offer */}
         <PostOfferForm />
 
@@ -556,15 +565,16 @@ export default async function OwnerPortalPage({
   const sp    = await searchParams;
   const query = sp.q?.trim() ?? "";
 
-  const [reps, shortlist, teams, pending, verificationRequests] = await Promise.all([
+  const [reps, shortlist, teams, pending, verificationRequests, ownerApplications] = await Promise.all([
     getDiscoverableReps(query || undefined),
     getOwnerShortlist(user.id),
     getAllTeamsForOwner(),
     getPendingTeamApplications(),
     getPendingOwnerVerificationRequests(),
+    getOwnerApplications(user.id),
   ]);
 
   return (
-    <FullPortal reps={reps} shortlist={shortlist} query={query} teams={teams} pending={pending} verificationRequests={verificationRequests} />
+    <FullPortal reps={reps} shortlist={shortlist} query={query} teams={teams} pending={pending} verificationRequests={verificationRequests} ownerApplications={ownerApplications} />
   );
 }

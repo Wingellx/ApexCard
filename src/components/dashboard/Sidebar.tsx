@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, PhoneCall, Target, History, Award,
-  Settings, LogOut, Menu, X, Trophy, User, Flame, Users, Zap, Shield, Dumbbell, BarChart3, BookUser, Briefcase, TrendingUp,
+  Settings, LogOut, Menu, X, Trophy, User, Flame, Users, Zap, Shield, Dumbbell, BarChart3, BookUser, Briefcase, TrendingUp, FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signout } from "@/app/auth/actions";
@@ -45,7 +45,8 @@ function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin
       items: [
         { href: "/leaderboard",             label: "Leaderboard", icon: Trophy  },
         { href: "/leaderboard/communities", label: "Rankings",    icon: BarChart3 },
-        { href: "/offers",                  label: "Offer Board", icon: Briefcase },
+        { href: "/offers",                       label: "Offer Board",   icon: Briefcase },
+        { href: "/dashboard/applications",        label: "Applications",  icon: FileText  },
         ...(teamId ? [
           { href: "/dashboard/team",          label: isIOmember ? "Brotherhood ⚔️" : "Team",     icon: Users    },
           { href: "/dashboard/team/training", label: "Training",                                  icon: Dumbbell },

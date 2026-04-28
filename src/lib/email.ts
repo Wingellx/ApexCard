@@ -344,3 +344,137 @@ export function buildVerificationDeclinedEmail({
 
   return { subject, html: emailShell(body) };
 }
+
+// ── Application submitted — owner notification ────────────────────────────────
+
+const fmtCash = (n: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+
+export function buildApplicationSubmittedEmail({
+  ownerName,
+  repName,
+  repEmail,
+  repUsername,
+  repRole,
+  isVerified,
+  lifetimeCash,
+  closeRate,
+  daysLogged,
+  coverNote,
+  offerTitle,
+  ownerPortalUrl,
+}: {
+  ownerName:      string;
+  repName:        string;
+  repEmail:       string;
+  repUsername:    string | null;
+  repRole:        string | null;
+  isVerified:     boolean;
+  lifetimeCash:   number;
+  closeRate:      number;
+  daysLogged:     number;
+  coverNote:      string | null;
+  offerTitle:     string;
+  ownerPortalUrl: string;
+}): { subject: string; html: string } {
+  const subject = `New application — ${repName} applied to "${offerTitle}"`;
+
+  const roleLabel: Record<string, string> = {
+    closer: "Closer", setter: "Appointment Setter", operator: "Growth Operator",
+    manager: "Sales Manager", sdr: "SDR", ae: "Account Executive",
+  };
+
+  const body = `
+    <h2 style="margin:0 0 6px;font-size:22px;font-weight:700;color:#111827;">New Application</h2>
+    <p style="margin:0 0 4px;font-size:15px;color:#6b7280;">Hi ${ownerName},</p>
+    <p style="margin:0 0 28px;font-size:15px;color:#374151;">
+      <strong>${repName}</strong> just applied to your offer: <em>${offerTitle}</em>
+    </p>
+
+    <table cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin-bottom:24px;">
+      <tr>
+        <td style="background:#111318;padding:16px 20px;">
+          <p style="margin:0;font-size:16px;font-weight:700;color:#f0f2f8;">${repName}</p>
+          <p style="margin:2px 0 0;font-size:12px;color:#6b7280;">
+            ${repRole ? (roleLabel[repRole] ?? repRole) : "Sales Rep"}
+            ${repUsername ? ` · @${repUsername}` : ""}
+            ${isVerified ? " · ✓ Verified" : ""}
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="background:#f8fafc;padding:16px 20px;">
+          <table cellpadding="0" cellspacing="0" width="100%"><tr>
+            <td width="33%" style="text-align:center;padding:8px;">
+              <p style="margin:0;font-size:18px;font-weight:700;color:#059669;">${fmtCash(lifetimeCash)}</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">Cash Collected</p>
+            </td>
+            <td width="33%" style="text-align:center;padding:8px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">
+              <p style="margin:0;font-size:18px;font-weight:700;color:#6366f1;">${closeRate.toFixed(1)}%</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">Close Rate</p>
+            </td>
+            <td width="33%" style="text-align:center;padding:8px;">
+              <p style="margin:0;font-size:18px;font-weight:700;color:#374151;">${daysLogged}</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">Days Logged</p>
+            </td>
+          </tr></table>
+        </td>
+      </tr>
+    </table>
+
+    ${coverNote ? `
+    <div style="background:#f8fafc;border-left:3px solid #6366f1;border-radius:0 8px 8px 0;padding:14px 18px;margin-bottom:28px;">
+      <p style="margin:0 0 6px;font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">Cover Note</p>
+      <p style="margin:0;font-size:14px;color:#374151;line-height:1.6;">${coverNote}</p>
+    </div>` : ""}
+
+    <p style="margin:0 0 24px;font-size:14px;color:#374151;">
+      Review this application and update the status from your Owner Portal.
+    </p>
+
+    <p style="text-align:center;margin:0 0 8px;">
+      ${ctaButton(ownerPortalUrl, "View in Owner Portal")}
+    </p>
+    <p style="margin:0;font-size:12px;color:#94a3b8;text-align:center;">Rep's email: ${repEmail}</p>`;
+
+  return { subject, html: emailShell(body) };
+}
+
+// ── Application status update — rep notification ─────────────────────────────
+
+export function buildApplicationStatusEmail({
+  repName,
+  status,
+  offerTitle,
+  company,
+  appUrl,
+}: {
+  repName:    string;
+  status:     "submitted" | "viewed" | "accepted" | "declined";
+  offerTitle: string;
+  company:    string;
+  appUrl:     string;
+}): { subject: string; html: string } {
+  const statusConfig = {
+    viewed:    { label: "Application Viewed",    color: "#6366f1", msg: "Your application has been viewed by the offer owner. They'll be in touch soon." },
+    accepted:  { label: "Application Accepted",  color: "#059669", msg: "Congratulations — your application has been accepted! The offer owner will reach out with next steps." },
+    declined:  { label: "Application Declined",  color: "#dc2626", msg: "Unfortunately your application wasn't selected this time. Keep building and try again." },
+    submitted: { label: "Application Submitted", color: "#6366f1", msg: "Your application was submitted successfully." },
+  };
+
+  const cfg     = statusConfig[status];
+  const subject = `${cfg.label} — ${offerTitle} at ${company}`;
+
+  const body = `
+    <h2 style="margin:0 0 6px;font-size:22px;font-weight:700;color:#111827;">${cfg.label}</h2>
+    <p style="margin:0 0 20px;font-size:15px;color:#6b7280;">Hi ${repName},</p>
+    <p style="margin:0 0 6px;font-size:14px;color:#374151;">
+      <strong>${offerTitle}</strong> · ${company}
+    </p>
+    <p style="margin:0 0 28px;font-size:14px;color:#374151;line-height:1.6;">${cfg.msg}</p>
+    <p style="text-align:center;margin:0;">
+      ${ctaButton(appUrl, "View My Applications", cfg.color)}
+    </p>`;
+
+  return { subject, html: emailShell(body) };
+}
