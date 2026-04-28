@@ -506,3 +506,21 @@ export function buildApplicationStatusEmail({
 
   return { subject, html: emailShell(body) };
 }
+
+// ── Waitlist welcome email ─────────────────────────────────────────
+
+export function buildWaitlistWelcomeEmail(): { subject: string; html: string } {
+  const subject = "You're on the waitlist — ApexCard";
+
+  const body = `
+    <h2 style="margin:0 0 20px;font-size:24px;font-weight:800;color:#111827;line-height:1.2;">You're in.</h2>
+    <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.7;">
+      You're on the waitlist. We'll keep you updated on new features and our launch date.
+    </p>
+    <p style="margin:0 0 32px;font-size:15px;color:#374151;line-height:1.7;">
+      Stay tuned — something big is coming.
+    </p>
+    <p style="margin:0;font-size:15px;color:#374151;">— Jacob at ApexCard</p>`;
+
+  return { subject, html: emailShell(body) };
+}

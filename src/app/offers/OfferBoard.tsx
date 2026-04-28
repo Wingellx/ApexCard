@@ -673,14 +673,14 @@ export default function OfferBoard({
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
 
       {/* Page header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-start justify-between gap-3 mb-8 flex-wrap">
         <div>
           <h1 className="text-xl font-extrabold text-[#f0f2f8] tracking-tight">Offer Board</h1>
           <p className="text-sm text-[#4b5563] mt-0.5">{offers.length} active role{offers.length !== 1 ? "s" : ""}</p>
         </div>
         <a
           href="/dashboard/applications"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#4b5563] hover:text-indigo-400 border border-[#1e2130] hover:border-indigo-500/30 px-3 py-2 rounded-lg transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#4b5563] hover:text-indigo-400 border border-[#1e2130] hover:border-indigo-500/30 px-3 py-2 rounded-lg transition-colors shrink-0"
         >
           <FileText className="w-3.5 h-3.5" />
           My Applications
@@ -693,55 +693,58 @@ export default function OfferBoard({
       </div>
 
       {/* Tabs + filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
-        {/* Role type tabs */}
-        <div className="flex bg-[#0f1117] border border-[#1e2130] rounded-xl p-1 gap-0.5">
-          {tabs.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors",
-                tab === t.key
-                  ? "bg-indigo-600 text-white shadow"
-                  : "text-[#4b5563] hover:text-[#9ca3af] hover:bg-white/[0.03]"
-              )}
-            >
-              {t.label}
-              <span className={cn(
-                "text-[10px] px-1.5 py-0.5 rounded-full font-bold",
-                tab === t.key ? "bg-white/20 text-white" : "bg-white/[0.04] text-[#374151]"
-              )}>
-                {tabCounts[t.key]}
-              </span>
-            </button>
-          ))}
+      <div className="flex flex-col gap-3 mb-6">
+        {/* Role type tabs — scrollable on mobile */}
+        <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+          <div className="flex bg-[#0f1117] border border-[#1e2130] rounded-xl p-1 gap-0.5 w-max sm:w-auto min-w-full sm:min-w-0">
+            {tabs.map(t => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap",
+                  tab === t.key
+                    ? "bg-indigo-600 text-white shadow"
+                    : "text-[#4b5563] hover:text-[#9ca3af] hover:bg-white/[0.03]"
+                )}
+              >
+                {t.label}
+                <span className={cn(
+                  "text-[10px] px-1.5 py-0.5 rounded-full font-bold",
+                  tab === t.key ? "bg-white/20 text-white" : "bg-white/[0.04] text-[#374151]"
+                )}>
+                  {tabCounts[t.key]}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* B2B/B2C filter */}
-        <div className="flex bg-[#0f1117] border border-[#1e2130] rounded-xl p-1 gap-0.5">
-          {(["all", "b2b", "b2c"] as const).map(v => (
-            <button
-              key={v}
-              onClick={() => setB2bFilter(v)}
-              className={cn(
-                "px-3 py-2 rounded-lg text-xs font-bold transition-colors",
-                b2bFilter === v
-                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
-                  : "text-[#4b5563] hover:text-[#9ca3af]"
-              )}
-            >
-              {v === "all" ? "All" : v.toUpperCase()}
-            </button>
-          ))}
-        </div>
+        {/* Secondary filters — wrap on mobile */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* B2B/B2C filter */}
+          <div className="flex bg-[#0f1117] border border-[#1e2130] rounded-xl p-1 gap-0.5">
+            {(["all", "b2b", "b2c"] as const).map(v => (
+              <button
+                key={v}
+                onClick={() => setB2bFilter(v)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-colors",
+                  b2bFilter === v
+                    ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                    : "text-[#4b5563] hover:text-[#9ca3af]"
+                )}
+              >
+                {v === "all" ? "All" : v.toUpperCase()}
+              </button>
+            ))}
+          </div>
 
-        {/* Toggles */}
-        <div className="flex items-center gap-3">
+          {/* Toggles */}
           <button
             onClick={() => setVerifiedOnly(v => !v)}
             className={cn(
-              "inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-colors",
+              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors",
               verifiedOnly
                 ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/30"
                 : "text-[#4b5563] bg-[#0f1117] border-[#1e2130] hover:text-[#9ca3af]"
@@ -752,7 +755,7 @@ export default function OfferBoard({
           <button
             onClick={() => setEligibleOnly(v => !v)}
             className={cn(
-              "inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-colors",
+              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors",
               eligibleOnly
                 ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
                 : "text-[#4b5563] bg-[#0f1117] border-[#1e2130] hover:text-[#9ca3af]"

@@ -22,12 +22,39 @@ interface SidebarProps {
   isCRMenabled?: boolean;
   role?: string | null;
   hasKPIDashboard?: boolean;
+  isTeamMember?: boolean;
 }
 
-function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin?: boolean, isCRMenabled?: boolean, role?: string | null, hasKPIDashboard?: boolean) {
+function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin?: boolean, isCRMenabled?: boolean, role?: string | null, hasKPIDashboard?: boolean, isTeamMember?: boolean) {
   const isSetter = role === "setter";
   const isCloser = role === "closer";
   const useCRM   = isSetter || isCloser;
+
+  // Team members get a scoped navigation
+  if (isTeamMember) {
+    return [
+      {
+        label: "My Performance",
+        items: [
+          { href: "/dashboard/log",   label: "Log Calls", icon: PhoneCall },
+          { href: "/dashboard/stats", label: "My Stats",  icon: Award     },
+        ],
+      },
+      ...(teamId ? [{
+        label: "Team",
+        items: [
+          { href: "/dashboard/team", label: "Team Leaderboard", icon: Users },
+        ],
+      }] : []),
+      {
+        label: "Account",
+        items: [
+          { href: "/dashboard/profile", label: "Profile", icon: User },
+        ],
+      },
+    ];
+  }
+
   return [
     {
       label: "Performance",
@@ -82,8 +109,8 @@ function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin
   ];
 }
 
-export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId, isIOmember, isTeamAdmin, isCRMenabled, role, hasKPIDashboard }: SidebarProps) {
-  const sections = buildSections(teamId, isIOmember, isTeamAdmin, isCRMenabled, role, hasKPIDashboard);
+export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId, isIOmember, isTeamAdmin, isCRMenabled, role, hasKPIDashboard, isTeamMember }: SidebarProps) {
+  const sections = buildSections(teamId, isIOmember, isTeamAdmin, isCRMenabled, role, hasKPIDashboard, isTeamMember);
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 

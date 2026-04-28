@@ -1,6 +1,8 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendEmail } from "@/lib/resend";
+import { buildWaitlistWelcomeEmail } from "@/lib/email";
 
 export type WaitlistResult =
   | { success: true; count: number; alreadyJoined?: boolean }
@@ -37,6 +39,9 @@ export async function joinWaitlist(
   const { count } = await admin
     .from("waitlist")
     .select("*", { count: "exact", head: true });
+
+  const welcome = buildWaitlistWelcomeEmail();
+  await sendEmail({ to: raw, subject: welcome.subject, html: welcome.html });
 
   return { success: true, count: count ?? 1 };
 }

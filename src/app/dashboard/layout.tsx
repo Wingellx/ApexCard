@@ -7,6 +7,7 @@ import { getPreviewRole, previewRoleLabel } from "@/lib/preview";
 import { getUserCustomFeature } from "@/lib/queries";
 import Sidebar from "@/components/dashboard/Sidebar";
 import PreviewBanner from "@/components/owner/PreviewBanner";
+import TeamMemberBanner from "@/components/dashboard/TeamMemberBanner";
 
 const ROLE_LABELS: Record<string, string> = {
   closer:        "Closer",
@@ -39,6 +40,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // Owners are redirected to /owner unless they have an active preview session
   if (profile.account_type === "owner" && !previewRole) redirect("/owner");
 
+  const isTeamMember = profile.account_type === "team_member";
+
   const isPreview = profile.account_type === "owner" && !!previewRole;
 
   const subStatus    = profile.subscription_status ?? "trialing";
@@ -46,6 +49,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const trialExpired = trialEndsAt ? new Date(trialEndsAt) < new Date() : false;
   const showUpgradeBanner =
     !isPreview &&
+    !isTeamMember &&
     (subStatus === "canceled" || subStatus === "unpaid" ||
      (subStatus === "trialing" && trialExpired));
 
@@ -60,6 +64,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     : (ROLE_LABELS[profile.role ?? ""] ?? "Sales Rep");
 
   // In preview mode, show a limited rep-like nav (no team/CRM/IO — owner has none)
+  // Team members get limited nav: only CRM, stats, and team
   const effectiveTeamId    = isPreview ? null : (userTeam?.teamId ?? null);
   const effectiveIOmember  = isPreview ? false : isIOmember;
   const effectiveTeamAdmin = isPreview ? false : teamRole === "admin";
@@ -81,9 +86,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
         isCRMenabled={effectiveCRM}
         role={effectiveRole}
         hasKPIDashboard={isPreview ? false : hasKPIDashboard}
+        isTeamMember={isTeamMember}
       />
       <div className="lg:ml-64 pt-14 lg:pt-0">
         {isPreview && <PreviewBanner role={previewRole!} />}
+        {isTeamMember && userTeam && (
+          <TeamMemberBanner teamName={userTeam.team.name} />
+        )}
         {showUpgradeBanner && (
           <div className="bg-rose-500/10 border-b border-rose-500/20 px-6 py-3 flex items-center justify-between gap-4">
             <p className="text-sm text-rose-300 font-medium">

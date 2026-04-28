@@ -46,13 +46,25 @@ export async function POST(req: NextRequest) {
       const plan   = obj.metadata?.plan as "starter" | "pro" | undefined;
       if (!userId) break;
 
+      // Check if user was a team_member — upgrade to rep on first payment
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("account_type")
+        .eq("id", userId)
+        .maybeSingle();
+
+      const updatePayload: Record<string, unknown> = {
+        subscription_status: "active",
+        subscription_plan:   plan ?? null,
+        stripe_customer_id:  obj.customer as string,
+      };
+      if (profile?.account_type === "team_member") {
+        updatePayload.account_type = "rep";
+      }
+
       await admin
         .from("profiles")
-        .update({
-          subscription_status: "active",
-          subscription_plan:   plan ?? null,
-          stripe_customer_id:  obj.customer as string,
-        })
+        .update(updatePayload)
         .eq("id", userId);
       break;
     }

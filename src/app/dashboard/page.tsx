@@ -163,15 +163,15 @@ export default async function DashboardPage() {
     <div className="px-4 sm:px-8 py-6 sm:py-8 max-w-[1400px]">
 
       {/* Header */}
-      <div className="animate-in flex items-start justify-between mb-8">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
+      <div className="animate-in flex items-start justify-between gap-3 mb-8 flex-wrap">
+        <div className="min-w-0">
+          <div className="flex items-center gap-3 mb-1 flex-wrap">
             <p className="text-xs font-semibold text-[#6b7280] uppercase tracking-widest flex items-center gap-1.5">
               <CalendarDays className="w-3.5 h-3.5" /> {today}
             </p>
             <StreakBadge streak={streak} />
           </div>
-          <h1 className="text-3xl font-extrabold text-[#f0f2f8] tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#f0f2f8] tracking-tight">
             {greeting()}, {firstName(profile?.full_name, profile?.email ?? user?.email)} 👋
           </h1>
           <p className="text-sm text-[#6b7280] mt-1">

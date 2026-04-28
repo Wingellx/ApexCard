@@ -152,7 +152,7 @@ export default async function JoinPage({
                   {isIO ? "Sign in to join the Brotherhood" : "Sign in to join"} <ArrowRight className="w-4 h-4" />
                 </Link>
                 <Link
-                  href={`/auth/signup?next=/join/${inviteCode}`}
+                  href={isIO ? `/auth/signup?next=/join/${inviteCode}` : `/join/${inviteCode}/signup`}
                   className="inline-flex items-center justify-center gap-2 w-full text-sm text-[#4b5563] hover:text-[#9ca3af] transition-colors py-1"
                 >
                   Don&apos;t have an account? Sign up →

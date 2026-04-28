@@ -495,11 +495,12 @@ function StepOwnerPending() {
 
 // ── Main flow ─────────────────────────────────────────────────
 
-export default function OnboardingFlow() {
+export default function OnboardingFlow({ showTracking = false }: { showTracking?: boolean }) {
   const [step, setStep]               = useState(0);
   const [accountType, setAccountType] = useState<AccountType | null>(null);
 
-  const repStepCount   = 5; // Welcome, Profile, Tracking, Goals, Done
+  // Tracking step only shown for improvement community (IO) members
+  const repStepCount   = showTracking ? 5 : 4; // Welcome, Profile, [Tracking], Goals, Done
   const ownerStepCount = 3; // Welcome, Details, Pending
   const totalSteps     = accountType === "owner" ? ownerStepCount : repStepCount;
 
@@ -522,9 +523,21 @@ export default function OnboardingFlow() {
         )}
 
         {/* Sales Rep path */}
-        {accountType === "rep" && step === 1 && <StepProfile  onNext={() => setStep(2)} />}
-        {accountType === "rep" && step === 2 && <StepTracking onNext={() => setStep(3)} />}
-        {accountType === "rep" && step === 3 && <StepGoals    onNext={() => setStep(4)} />}
+        {accountType === "rep" && step === 1 && (
+          <StepProfile onNext={() => setStep(2)} />
+        )}
+        {accountType === "rep" && step === 2 && showTracking && (
+          <StepTracking onNext={() => setStep(3)} />
+        )}
+        {accountType === "rep" && step === 2 && !showTracking && (
+          <StepGoals onNext={() => setStep(3)} />
+        )}
+        {accountType === "rep" && step === 3 && showTracking && (
+          <StepGoals onNext={() => setStep(4)} />
+        )}
+        {accountType === "rep" && step === 3 && !showTracking && (
+          <StepDone />
+        )}
         {accountType === "rep" && step === 4 && <StepDone />}
 
         {/* Offer Owner path */}

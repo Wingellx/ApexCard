@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import OnboardingFlow from "@/components/onboarding/OnboardingFlow";
+import { getIsIOmember } from "@/lib/io-queries";
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
@@ -8,13 +9,12 @@ export default async function OnboardingPage() {
 
   if (!user) redirect("/auth/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("onboarding_completed")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [{ data: profile }, isIOmember] = await Promise.all([
+    supabase.from("profiles").select("onboarding_completed").eq("id", user.id).maybeSingle(),
+    getIsIOmember(user.id),
+  ]);
 
   if (profile?.onboarding_completed) redirect("/dashboard");
 
-  return <OnboardingFlow />;
+  return <OnboardingFlow showTracking={isIOmember} />;
 }
