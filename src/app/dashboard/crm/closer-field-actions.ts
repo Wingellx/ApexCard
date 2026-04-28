@@ -198,6 +198,18 @@ export async function saveCloserDailyLog(
     .upsert(rows, { onConflict: "user_id,field_id,log_date" });
 
   if (error) return { error: error.message };
+
+  // Update last_log_date and re-activate verification if they're verified
+  const today = new Date().toISOString().split("T")[0];
+  const { data: profileData } = await admin
+    .from("profiles")
+    .select("is_verified")
+    .eq("id", user.id)
+    .maybeSingle();
+  const updatePayload: Record<string, unknown> = { last_log_date: today };
+  if (profileData?.is_verified) updatePayload.verification_active = true;
+  await admin.from("profiles").update(updatePayload).eq("id", user.id);
+
   revalidatePath("/dashboard/crm");
   return {};
 }

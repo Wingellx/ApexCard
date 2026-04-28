@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function submitCallLog(
   _prev: { error?: string; success?: boolean } | null,
@@ -49,6 +50,18 @@ export async function submitCallLog(
     );
 
   if (error) return { error: error.message };
+
+  // Update last_log_date and re-activate verification if they're verified
+  const admin = createAdminClient();
+  const today = new Date().toISOString().split("T")[0];
+  const { data: profileData } = await admin
+    .from("profiles")
+    .select("is_verified")
+    .eq("id", user.id)
+    .maybeSingle();
+  const updatePayload: Record<string, unknown> = { last_log_date: today };
+  if (profileData?.is_verified) updatePayload.verification_active = true;
+  await admin.from("profiles").update(updatePayload).eq("id", user.id);
 
   revalidatePath("/dashboard");
   return { success: true };

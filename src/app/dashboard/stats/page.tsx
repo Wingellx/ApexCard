@@ -5,9 +5,11 @@ import {
   getAllCallLogs, getProfileFull, computeBestPeriods, weekRangeLabel, monthKeyLabel,
   getDateRangeLogs, thisWeekBounds, lastWeekBounds,
 } from "@/lib/queries";
+import { getMyRepVerification, getApprovedManagers } from "@/lib/verification-queries";
 import CopyLinkButton from "@/components/dashboard/CopyLinkButton";
 import VerificationForm from "@/components/dashboard/VerificationForm";
 import DownloadCardButton from "@/components/dashboard/DownloadCardButton";
+import VerificationSection from "@/components/verification/VerificationSection";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -66,19 +68,33 @@ export default async function StatsPage() {
     ? `${appUrl}/card/${profile.username}`
     : `${appUrl}/stats/${user?.id}`;
 
-  // Fetch verification status (admin client — avoids RLS on verify_token columns)
+  // Fetch old + new verification status in parallel
   const admin = createAdminClient();
-  const { data: verifyReq, error: verifyError } = user
-    ? await admin
-        .from("verification_requests")
-        .select("manager_name, manager_company, manager_email, status, created_at, verified_at, verification_start_date")
-        .eq("user_id", user.id)
-        .in("status", ["pending", "verified"])
-        .maybeSingle()
-    : { data: null, error: null };
-  if (verifyError) console.error("[stats] verification_requests error:", verifyError);
+  const [verifyReqResult, newVerification, managers] = await Promise.allSettled([
+    user
+      ? admin
+          .from("verification_requests")
+          .select("manager_name, manager_company, manager_email, status, created_at, verified_at, verification_start_date")
+          .eq("user_id", user.id)
+          .in("status", ["pending", "verified"])
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    user ? getMyRepVerification(user.id) : Promise.resolve({ status: "none" as const, request: null, reviewerName: null }),
+    getApprovedManagers(),
+  ]);
+
+  const verifyReq = verifyReqResult.status === "fulfilled" ? verifyReqResult.value.data : null;
+  const newVerif  = newVerification.status  === "fulfilled" ? newVerification.value  : { status: "none" as const, request: null, reviewerName: null };
+  const managerList = managers.status === "fulfilled" ? managers.value : [];
 
   const verificationStatus = (verifyReq?.status ?? "none") as "none" | "pending" | "verified" | "rejected";
+
+  // Merged: either old or new system can make someone verified
+  const isVerified         = verificationStatus === "verified" || newVerif.status === "approved" || ((profile as Record<string, unknown> | null)?.is_verified === true);
+  const verificationActive = (profile as { verification_active?: boolean } | null)?.verification_active ?? isVerified;
+  const verifiedAt         = (profile as { verified_at?: string | null } | null)?.verified_at ?? verifyReq?.verified_at ?? null;
+  const verifiedByName     = newVerif.reviewerName ?? verifyReq?.manager_name ?? null;
+  const pendingRequest     = newVerif.status === "pending";
 
   if (logs.length === 0) {
     return (
@@ -320,17 +336,25 @@ export default async function StatsPage() {
       </div>
 
       {/* Get Verified section */}
-      <div className="bg-[#111318] border border-[#1e2130] rounded-xl p-6">
-        <div className="flex items-center gap-2 mb-1">
-          <ShieldCheck className="w-4 h-4 text-indigo-400" />
-          <p className="text-sm font-bold text-[#f0f2f8]">Get Verified</p>
+      <VerificationSection
+        isVerified={isVerified}
+        verificationActive={verificationActive}
+        verifiedAt={verifiedAt}
+        verifiedByName={verifiedByName}
+        pendingRequestExists={pendingRequest || verificationStatus === "pending"}
+        managers={managerList}
+      />
+
+      {/* Legacy verification form — shown only if they have an old-system record */}
+      {verifyReq && verificationStatus !== "none" && (
+        <div className="bg-[#111318] border border-[#1e2130] rounded-xl p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <ShieldCheck className="w-4 h-4 text-indigo-400" />
+            <p className="text-sm font-bold text-[#f0f2f8]">Legacy Verification</p>
+          </div>
+          <VerificationForm status={verificationStatus} existing={verifyReq ?? null} />
         </div>
-        <p className="text-xs text-[#6b7280] mb-5 leading-relaxed">
-          Have a manager verify your stats. We&apos;ll email them a branded summary and a one-click confirm button.
-          A green verified badge will appear on your public stats card.
-        </p>
-        <VerificationForm status={verificationStatus} existing={verifyReq ?? null} />
-      </div>
+      )}
     </div>
   );
   } catch (err) {

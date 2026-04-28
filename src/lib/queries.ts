@@ -338,7 +338,7 @@ export async function getPublicLifetimeStats(userId: string) {
       .eq("user_id", userId),
     admin
       .from("profiles")
-      .select("full_name, email, is_verified, verified_by_name, verified_by_company, username, role")
+      .select("full_name, email, is_verified, verified_by_name, verified_by_company, verified_at, verification_active, username, role")
       .eq("id", userId)
       .maybeSingle(),
   ]);
@@ -352,6 +352,8 @@ export async function getPublicLifetimeStats(userId: string) {
     is_verified: boolean | null;
     verified_by_name: string | null;
     verified_by_company: string | null;
+    verified_at: string | null;
+    verification_active: boolean | null;
     username: string | null;
     role: string | null;
   };
@@ -364,7 +366,7 @@ export async function getPublicLifetimeStats(userId: string) {
       .eq("id", userId)
       .maybeSingle();
     resolvedProfile = fallback
-      ? { full_name: fallback.full_name, email: fallback.email, username: fallback.username, role: fallback.role, is_verified: false, verified_by_name: null, verified_by_company: null }
+      ? { full_name: fallback.full_name, email: fallback.email, username: fallback.username, role: fallback.role, is_verified: false, verified_by_name: null, verified_by_company: null, verified_at: null, verification_active: null }
       : null;
   }
 
@@ -391,12 +393,14 @@ export async function getPublicLifetimeStats(userId: string) {
   const isVerified        = resolvedProfile.is_verified        ?? false;
   const verifiedByName    = resolvedProfile.verified_by_name    ?? null;
   const verifiedByCompany = resolvedProfile.verified_by_company ?? null;
+  const verificationActive = resolvedProfile.verification_active ?? isVerified;
+  const verifiedAt         = resolvedProfile.verified_at         ?? null;
   const username          = resolvedProfile.username            ?? null;
   const role              = resolvedProfile.role                ?? null;
   const sortedDates       = [...(logs ?? []).map((r) => r.date as string)].sort().reverse();
   const streak            = calculateStreak(sortedDates);
 
-  return { totals, showRate, closeRate, cashPerClose, bestDay, daysLogged, name, isVerified, verifiedByName, verifiedByCompany, username, role, streak };
+  return { totals, showRate, closeRate, cashPerClose, bestDay, daysLogged, name, isVerified, verifiedByName, verifiedByCompany, verificationActive, verifiedAt, username, role, streak };
 }
 
 // ── Teams ────────────────────────────────────────────────────

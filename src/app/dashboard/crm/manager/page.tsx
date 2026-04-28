@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getUserTeamRole } from "@/lib/queries";
 import { getManagedTeams } from "@/lib/crm-queries";
+import { getPendingRequestsForManager } from "@/lib/verification-queries";
 import CreateTeamForm from "@/components/crm/CreateTeamForm";
+import ManagerVerificationPanel from "@/components/verification/ManagerVerificationPanel";
 import { Shield, Users, ChevronRight, Clock, CheckCircle, XCircle } from "lucide-react";
 
 const STATUS_BADGE: Record<string, { label: string; cls: string; icon: React.FC<{ className?: string }> }> = {
@@ -19,7 +21,10 @@ export default async function CRMManagerPage() {
   const role = await getUserTeamRole(user.id);
   if (role !== "admin") redirect("/dashboard/crm");
 
-  const teams = await getManagedTeams(user.id);
+  const [teams, verificationRequests] = await Promise.all([
+    getManagedTeams(user.id),
+    getPendingRequestsForManager(user.id),
+  ]);
 
   const primaryTeam = teams.find(t => t.is_primary);
 
@@ -83,6 +88,11 @@ export default async function CRMManagerPage() {
           );
         })}
       </div>
+
+      {/* Verification requests from reps */}
+      {verificationRequests.length > 0 && (
+        <ManagerVerificationPanel requests={verificationRequests} />
+      )}
 
       {/* Create sub-team */}
       {primaryTeam && (

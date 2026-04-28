@@ -15,6 +15,8 @@ import {
 import ShortlistButton from "./ShortlistButton";
 import ProcessTiersButton from "./ProcessTiersButton";
 import PostOfferForm from "./PostOfferForm";
+import { getPendingOwnerVerificationRequests } from "@/lib/verification-queries";
+import OwnerVerificationPanel from "@/components/verification/OwnerVerificationPanel";
 import { signout } from "@/app/auth/actions";
 import { approveTeamById, declineTeamById, setPreviewRole, enterSBOAdminMode } from "./actions";
 import { PREVIEW_ROLES } from "@/lib/preview";
@@ -367,12 +369,14 @@ function FullPortal({
   query,
   teams,
   pending,
+  verificationRequests,
 }: {
-  reps:      DiscoverableRep[];
-  shortlist: Set<string>;
-  query:     string;
-  teams:     OwnerTeamRow[];
-  pending:   PendingTeamApplication[];
+  reps:                   DiscoverableRep[];
+  shortlist:              Set<string>;
+  query:                  string;
+  teams:                  OwnerTeamRow[];
+  pending:                PendingTeamApplication[];
+  verificationRequests:   import("@/lib/verification-queries").RepVerificationRequestWithRep[];
 }) {
   const shortlisted = reps.filter((r) => shortlist.has(r.id));
 
@@ -482,6 +486,11 @@ function FullPortal({
           <ProcessTiersButton />
         </div>
 
+        {/* Rep verification requests */}
+        {verificationRequests.length > 0 && (
+          <OwnerVerificationPanel requests={verificationRequests} />
+        )}
+
         {/* SetByOffers — Post an Offer */}
         <PostOfferForm />
 
@@ -547,14 +556,15 @@ export default async function OwnerPortalPage({
   const sp    = await searchParams;
   const query = sp.q?.trim() ?? "";
 
-  const [reps, shortlist, teams, pending] = await Promise.all([
+  const [reps, shortlist, teams, pending, verificationRequests] = await Promise.all([
     getDiscoverableReps(query || undefined),
     getOwnerShortlist(user.id),
     getAllTeamsForOwner(),
     getPendingTeamApplications(),
+    getPendingOwnerVerificationRequests(),
   ]);
 
   return (
-    <FullPortal reps={reps} shortlist={shortlist} query={query} teams={teams} pending={pending} />
+    <FullPortal reps={reps} shortlist={shortlist} query={query} teams={teams} pending={pending} verificationRequests={verificationRequests} />
   );
 }

@@ -4,10 +4,27 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   Briefcase, Star, X, Copy, Check, ExternalLink,
-  ChevronDown, ArrowLeft,
+  ChevronDown, ArrowLeft, Lock, ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Offer, OfferRoleType } from "@/lib/offers-queries";
+import type { Offer, OfferRoleType, UserEligibility } from "@/lib/offers-queries";
+
+const fmt = (n: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+
+function getUnmetRequirements(offer: Offer, eligibility: UserEligibility): string[] {
+  const unmet: string[] = [];
+  if (offer.requires_verified && !(eligibility.isVerified && eligibility.verificationActive)) {
+    unmet.push("Verification required");
+  }
+  if (offer.min_cash_collected !== null && eligibility.lifetimeCash < offer.min_cash_collected) {
+    unmet.push(`${fmt(offer.min_cash_collected)} minimum cash collected — your total: ${fmt(eligibility.lifetimeCash)}`);
+  }
+  if (offer.min_close_rate !== null && eligibility.closeRate < offer.min_close_rate) {
+    unmet.push(`${offer.min_close_rate.toFixed(0)}% minimum close rate — yours: ${eligibility.closeRate.toFixed(1)}%`);
+  }
+  return unmet;
+}
 
 // ── Branding ─────────────────────────────────────────────────────
 
@@ -64,8 +81,19 @@ const FILTER_PILLS = ["Experience Level", "Region", "Role Type"];
 
 // ── Offer card ────────────────────────────────────────────────────
 
-function OfferCard({ offer, onApply }: { offer: Offer; onApply: (o: Offer) => void }) {
-  const c = SECTION_COLORS[offer.role_type];
+function OfferCard({
+  offer,
+  eligibility,
+  onApply,
+}: {
+  offer: Offer;
+  eligibility: UserEligibility;
+  onApply: (o: Offer) => void;
+}) {
+  const c    = SECTION_COLORS[offer.role_type];
+  const unmet = getUnmetRequirements(offer, eligibility);
+  const locked = unmet.length > 0;
+
   return (
     <div
       className={cn(
@@ -80,7 +108,12 @@ function OfferCard({ offer, onApply }: { offer: Offer; onApply: (o: Offer) => vo
             <Star className="w-2.5 h-2.5 fill-amber-400" /> Featured
           </span>
         )}
-        <h3 className="text-[13px] font-bold text-[#f0f2f8] leading-snug">{offer.title}</h3>
+        <div className="flex items-start gap-2">
+          <h3 className="flex-1 text-[13px] font-bold text-[#f0f2f8] leading-snug">{offer.title}</h3>
+          {offer.requires_verified && (
+            <ShieldCheck className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" aria-label="Verified reps only" />
+          )}
+        </div>
         <p className={cn("text-[11px] font-semibold", c.accent)}>{offer.company_name}</p>
       </div>
 
@@ -101,16 +134,32 @@ function OfferCard({ offer, onApply }: { offer: Offer; onApply: (o: Offer) => vo
         )}
       </div>
 
-      {/* Apply button */}
-      <button
-        onClick={() => onApply(offer)}
-        className={cn(
-          "mt-auto w-full py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r border transition-all duration-200",
-          c.applyBtn
-        )}
-      >
-        Apply Now →
-      </button>
+      {/* Locked state or Apply button */}
+      {locked ? (
+        <div className="mt-auto space-y-2">
+          <div className="w-full py-2.5 rounded-xl text-xs font-bold bg-[#0d0f15] border border-[#1a1d28] text-[#374151] flex items-center justify-center gap-2 cursor-not-allowed select-none">
+            <Lock className="w-3 h-3" /> Requirements not met
+          </div>
+          <div className="space-y-1">
+            {unmet.map((req, i) => (
+              <p key={i} className="text-[10px] text-[#4b5563] leading-snug flex items-start gap-1.5">
+                <span className="text-rose-500 shrink-0 mt-0.5">✕</span>
+                {req}
+              </p>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => onApply(offer)}
+          className={cn(
+            "mt-auto w-full py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r border transition-all duration-200",
+            c.applyBtn
+          )}
+        >
+          Apply Now →
+        </button>
+      )}
     </div>
   );
 }
@@ -275,9 +324,11 @@ function ApplyModal({
 export default function OfferBoard({
   offers,
   userUsername,
+  userEligibility,
 }: {
   offers: Offer[];
   userUsername: string | null;
+  userEligibility: UserEligibility;
 }) {
   const [activeOffer, setActiveOffer] = useState<Offer | null>(null);
 
@@ -362,7 +413,7 @@ export default function OfferBoard({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {roleOffers.map((offer) => (
-                  <OfferCard key={offer.id} offer={offer} onApply={setActiveOffer} />
+                  <OfferCard key={offer.id} offer={offer} eligibility={userEligibility} onApply={setActiveOffer} />
                 ))}
               </div>
             </section>

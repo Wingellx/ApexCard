@@ -177,6 +177,49 @@ export default function PostOfferForm() {
           </label>
         </div>
 
+        {/* Gating requirements */}
+        <div className="sm:col-span-2 pt-3 border-t border-[#1e2130] space-y-3">
+          <p className={labelClass}>Applicant Requirements (optional)</p>
+          <div className="flex items-center gap-3">
+            <input
+              id="po-verified"
+              name="requires_verified"
+              type="checkbox"
+              className="w-4 h-4 rounded accent-indigo-500 cursor-pointer"
+            />
+            <label htmlFor="po-verified" className="text-sm text-[#9ca3af] cursor-pointer select-none">
+              Verified reps only
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="po-min-cash" className={labelClass}>Min Cash Collected ($)</label>
+              <input
+                id="po-min-cash"
+                name="min_cash_collected"
+                type="number"
+                min="0"
+                step="1000"
+                placeholder="e.g. 50000"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label htmlFor="po-min-cr" className={labelClass}>Min Close Rate (%)</label>
+              <input
+                id="po-min-cr"
+                name="min_close_rate"
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                placeholder="e.g. 20"
+                className={inputClass}
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Error */}
         {state.error && (
           <div className="sm:col-span-2 bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3">

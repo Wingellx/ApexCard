@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ShieldCheck, Crown, ChevronLeft, Flame, Star, CalendarDays } from "lucide-react";
 import type { VerifiedPeriodStats } from "@/lib/queries";
+import VerifiedBadge from "@/components/verification/VerifiedBadge";
 
 const ROLE_LABELS: Record<string, string> = {
   closer:  "Closer",
@@ -23,6 +24,8 @@ interface Props {
   name: string;
   role?: string | null;
   isVerified: boolean;
+  verificationActive?: boolean;
+  verifiedAt?: string | null;
   verifiedByName: string | null;
   verifiedByCompany: string | null;
   totals: {
@@ -50,7 +53,7 @@ function rankLabel(rank: number) {
 }
 
 export default function PublicStatsCard({
-  name, role, isVerified, verifiedByName, verifiedByCompany,
+  name, role, isVerified, verificationActive, verifiedAt, verifiedByName, verifiedByCompany,
   totals, showRate, closeRate, cashPerClose, bestDay, daysLogged,
   streak = 0, monthlyRank, verifiedPeriod,
 }: Props) {
@@ -120,10 +123,12 @@ export default function PublicStatsCard({
               </span>
             </div>
             {isVerified && (
-              <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] font-black px-2.5 py-1 rounded-full tracking-wide uppercase">
-                <ShieldCheck className="w-3 h-3" />
-                Verified
-              </div>
+              <VerifiedBadge
+                verificationActive={verificationActive ?? true}
+                verifiedAt={verifiedAt ?? null}
+                verifiedByName={verifiedByName}
+                size="sm"
+              />
             )}
           </div>
 

@@ -28,26 +28,31 @@ export async function postOffer(
   if (!title || !companyName || !roleType || !niche || !applicationUrl)
     return { error: "Title, company, role type, niche and application URL are required." };
 
-  const commissionRaw = (formData.get("commission_pct") as string).trim();
-  const basePayRaw = (formData.get("base_pay") as string).trim();
-  const expiresAtRaw = (formData.get("expires_at") as string).trim();
+  const commissionRaw     = (formData.get("commission_pct")    as string).trim();
+  const basePayRaw        = (formData.get("base_pay")           as string).trim();
+  const expiresAtRaw      = (formData.get("expires_at")         as string).trim();
+  const minCashRaw        = (formData.get("min_cash_collected") as string).trim();
+  const minCloseRateRaw   = (formData.get("min_close_rate")     as string).trim();
 
   const admin = createAdminClient();
   const { error } = await admin.from("offers").insert({
     title,
-    company_name:    companyName,
-    role_type:       roleType,
+    company_name:       companyName,
+    role_type:          roleType,
     niche,
-    commission_pct:  commissionRaw ? Number(commissionRaw) : null,
-    base_pay:        basePayRaw    ? Number(basePayRaw)    : null,
-    description:     ((formData.get("description") as string) ?? "").trim(),
-    requirements:    ((formData.get("requirements") as string) ?? "").trim(),
-    application_url: applicationUrl,
-    is_active:       true,
-    is_featured:     formData.get("is_featured") === "on",
-    team_id:         null,
-    posted_by:       user.id,
-    expires_at:      expiresAtRaw || null,
+    commission_pct:     commissionRaw   ? Number(commissionRaw)   : null,
+    base_pay:           basePayRaw      ? Number(basePayRaw)      : null,
+    description:        ((formData.get("description") as string) ?? "").trim(),
+    requirements:       ((formData.get("requirements") as string) ?? "").trim(),
+    application_url:    applicationUrl,
+    is_active:          true,
+    is_featured:        formData.get("is_featured") === "on",
+    team_id:            null,
+    posted_by:          user.id,
+    expires_at:         expiresAtRaw || null,
+    requires_verified:  formData.get("requires_verified") === "on",
+    min_cash_collected: minCashRaw      ? Number(minCashRaw)      : null,
+    min_close_rate:     minCloseRateRaw ? Number(minCloseRateRaw) : null,
   });
 
   if (error) return { error: error.message };
