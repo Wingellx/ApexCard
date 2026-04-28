@@ -18,14 +18,15 @@ import PostOfferForm from "./PostOfferForm";
 import { getPendingOwnerVerificationRequests } from "@/lib/verification-queries";
 import OwnerVerificationPanel from "@/components/verification/OwnerVerificationPanel";
 import ApplicationsPanel from "@/components/owner/ApplicationsPanel";
-import { getOwnerApplications } from "@/lib/offers-queries";
+import PastOffersPanel from "@/components/owner/PastOffersPanel";
+import { getOwnerApplications, getOwnerClosedOffers } from "@/lib/offers-queries";
 import { signout } from "@/app/auth/actions";
 import { approveTeamById, declineTeamById, setPreviewRole, enterSBOAdminMode } from "./actions";
 import { PREVIEW_ROLES } from "@/lib/preview";
 import {
   Clock, Search, ExternalLink, ShieldCheck, Mail,
   Star, Users, Briefcase, BarChart3, Shield, ChevronRight,
-  CheckCircle2, XCircle, CalendarDays, User, Eye, LayoutGrid,
+  CheckCircle2, XCircle, CalendarDays, User, Eye, LayoutGrid, History,
 } from "lucide-react";
 
 const fmt = (n: number) =>
@@ -363,6 +364,65 @@ function SBOAdminSection() {
   );
 }
 
+// ── Tab nav ───────────────────────────────────────────────────
+
+function PortalTabNav({ active }: { active: "active" | "past" }) {
+  return (
+    <div className="flex items-center gap-1 bg-white/[0.03] border border-[#1e2130] rounded-xl p-1">
+      <Link
+        href="/owner"
+        className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+          active === "active"
+            ? "bg-indigo-500/15 text-indigo-300 border border-indigo-500/25"
+            : "text-[#4b5563] hover:text-[#9ca3af]"
+        }`}
+      >
+        <Briefcase className="w-3 h-3" /> Active
+      </Link>
+      <Link
+        href="/owner?tab=past"
+        className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+          active === "past"
+            ? "bg-indigo-500/15 text-indigo-300 border border-indigo-500/25"
+            : "text-[#4b5563] hover:text-[#9ca3af]"
+        }`}
+      >
+        <History className="w-3 h-3" /> Past Offers
+      </Link>
+    </div>
+  );
+}
+
+// ── Past portal ───────────────────────────────────────────────
+
+function PastPortal({ closedOffers }: { closedOffers: import("@/lib/offers-queries").ClosedOffer[] }) {
+  return (
+    <div className="min-h-screen bg-[#080a0e]">
+      <div className="border-b border-white/[0.04] bg-[#0b0d12]">
+        <div className="max-w-5xl mx-auto px-6 py-5 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+              <History className="w-4 h-4 text-indigo-400" />
+            </div>
+            <div>
+              <h1 className="text-base font-extrabold text-[#f0f2f8] tracking-tight leading-none">Past Offers</h1>
+              <p className="text-[11px] text-[#4b5563] mt-0.5">{closedOffers.length} closed offer{closedOffers.length !== 1 ? "s" : ""}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <PortalTabNav active="past" />
+            <SignOutForm />
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-6 py-8">
+        <PastOffersPanel offers={closedOffers} />
+      </div>
+    </div>
+  );
+}
+
 // ── Full portal ───────────────────────────────────────────────
 
 function FullPortal({
@@ -405,6 +465,7 @@ function FullPortal({
             >
               <LayoutGrid className="w-3.5 h-3.5" /> Offer Board
             </Link>
+            <PortalTabNav active="active" />
             <SignOutForm />
           </div>
         </div>
@@ -542,7 +603,7 @@ function FullPortal({
 export default async function OwnerPortalPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; tab?: string }>;
 }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -562,7 +623,13 @@ export default async function OwnerPortalPage({
     );
   }
 
-  const sp    = await searchParams;
+  const sp  = await searchParams;
+
+  if (sp.tab === "past") {
+    const closedOffers = await getOwnerClosedOffers(user.id);
+    return <PastPortal closedOffers={closedOffers} />;
+  }
+
   const query = sp.q?.trim() ?? "";
 
   const [reps, shortlist, teams, pending, verificationRequests, ownerApplications] = await Promise.all([

@@ -68,6 +68,29 @@ export interface OwnerApplication {
   expires_at: string;
 }
 
+export interface ClosedOfferApplicant {
+  user_id:                string;
+  rep_name:               string;
+  rep_email:              string;
+  rep_username:           string | null;
+  rep_is_verified:        boolean;
+  rep_verification_active: boolean;
+  rep_lifetime_cash:      number;
+  rep_close_rate:         number;
+  rep_days_logged:        number;
+  status:                 "interview" | "accepted";
+}
+
+export interface ClosedOffer {
+  id:           string;
+  title:        string;
+  company_name: string;
+  niche:        string;
+  role_type:    OfferRoleType;
+  fulfilled_at: string;
+  applicants:   ClosedOfferApplicant[];
+}
+
 // ── Queries ───────────────────────────────────────────────────────────────────
 
 export async function getOffers(): Promise<Offer[]> {
@@ -238,4 +261,91 @@ export async function getOwnerApplications(ownerUserId: string): Promise<OwnerAp
       expires_at:              app.expires_at,
     };
   });
+}
+
+export async function getOwnerClosedOffers(ownerUserId: string): Promise<ClosedOffer[]> {
+  const admin = createAdminClient();
+
+  const { data: offers } = await admin
+    .from("offers")
+    .select("id, title, company_name, niche, role_type, fulfilled_at")
+    .eq("posted_by", ownerUserId)
+    .eq("is_active", false)
+    .not("fulfilled_at", "is", null)
+    .order("fulfilled_at", { ascending: false });
+
+  if (!offers?.length) return [];
+
+  const offerIds = offers.map(o => o.id as string);
+
+  const { data: apps } = await admin
+    .from("offer_applications")
+    .select("offer_id, user_id, status, profiles(full_name, email, username, is_verified, verification_active)")
+    .in("offer_id", offerIds)
+    .in("status", ["interview", "accepted"]);
+
+  type AppRow = {
+    offer_id: string;
+    user_id:  string;
+    status:   "interview" | "accepted";
+    profiles: { full_name: string | null; email: string | null; username: string | null; is_verified: boolean | null; verification_active: boolean | null } | null;
+  };
+
+  const typedApps = (apps ?? []) as unknown as AppRow[];
+
+  if (typedApps.length > 0) {
+    const repIds = [...new Set(typedApps.map(a => a.user_id))];
+
+    const { data: logData } = await admin
+      .from("call_logs")
+      .select("user_id, shows, offers_taken, cash_collected")
+      .in("user_id", repIds);
+
+    const repStats = new Map<string, { cash: number; closeRate: number; daysLogged: number }>();
+    for (const repId of repIds) {
+      const repLogs = (logData ?? []).filter(l => l.user_id === repId);
+      const cash    = repLogs.reduce((a, l) => a + Number(l.cash_collected ?? 0), 0);
+      const shows   = repLogs.reduce((a, l) => a + (l.shows        ?? 0), 0);
+      const closed  = repLogs.reduce((a, l) => a + (l.offers_taken ?? 0), 0);
+      repStats.set(repId, { cash, closeRate: shows > 0 ? (closed / shows) * 100 : 0, daysLogged: repLogs.length });
+    }
+
+    const appsByOffer = new Map<string, ClosedOfferApplicant[]>();
+    for (const app of typedApps) {
+      if (!appsByOffer.has(app.offer_id)) appsByOffer.set(app.offer_id, []);
+      const stats = repStats.get(app.user_id) ?? { cash: 0, closeRate: 0, daysLogged: 0 };
+      appsByOffer.get(app.offer_id)!.push({
+        user_id:                 app.user_id,
+        rep_name:                app.profiles?.full_name           ?? "Unknown Rep",
+        rep_email:               app.profiles?.email               ?? "",
+        rep_username:            app.profiles?.username            ?? null,
+        rep_is_verified:         app.profiles?.is_verified         ?? false,
+        rep_verification_active: app.profiles?.verification_active ?? false,
+        rep_lifetime_cash:       stats.cash,
+        rep_close_rate:          stats.closeRate,
+        rep_days_logged:         stats.daysLogged,
+        status:                  app.status,
+      });
+    }
+
+    return offers.map(o => ({
+      id:           o.id           as string,
+      title:        o.title        as string,
+      company_name: o.company_name as string,
+      niche:        o.niche        as string,
+      role_type:    o.role_type    as OfferRoleType,
+      fulfilled_at: o.fulfilled_at as string,
+      applicants:   appsByOffer.get(o.id as string) ?? [],
+    }));
+  }
+
+  return offers.map(o => ({
+    id:           o.id           as string,
+    title:        o.title        as string,
+    company_name: o.company_name as string,
+    niche:        o.niche        as string,
+    role_type:    o.role_type    as OfferRoleType,
+    fulfilled_at: o.fulfilled_at as string,
+    applicants:   [],
+  }));
 }
