@@ -28,6 +28,7 @@ export async function signup(formData: FormData) {
     email: formData.get("email") as string,
     password: formData.get("password") as string,
     options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.apexcard.app"}/auth/callback?next=/auth/verified`,
       data: {
         full_name: formData.get("full_name") as string,
       },

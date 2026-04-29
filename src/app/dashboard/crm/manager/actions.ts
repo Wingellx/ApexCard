@@ -6,6 +6,42 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getUserTeam, getUserTeamRole } from "@/lib/queries";
 import { upsertTeamKpi } from "@/lib/crm-queries";
 
+export async function removeMember(
+  teamId: string,
+  memberId: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized." };
+
+  const role = await getUserTeamRole(user.id);
+  if (role !== "admin") return { error: "Only managers can remove members." };
+
+  const admin = createAdminClient();
+
+  // Verify caller manages this team
+  const [memberRes, managerRes] = await Promise.all([
+    admin.from("team_members").select("team_id").eq("user_id", user.id).eq("team_id", teamId).eq("role", "admin").maybeSingle(),
+    admin.from("team_managers").select("team_id").eq("user_id", user.id).eq("team_id", teamId).maybeSingle(),
+  ]);
+  if (!memberRes.data && !managerRes.data) return { error: "You do not manage this team." };
+
+  // Prevent self-removal
+  if (memberId === user.id) return { error: "You cannot remove yourself." };
+
+  const { error } = await admin
+    .from("team_members")
+    .delete()
+    .eq("team_id", teamId)
+    .eq("user_id", memberId);
+
+  if (error) return { error: "Failed to remove member." };
+
+  revalidatePath(`/dashboard/crm/manager/${teamId}`);
+  revalidatePath("/dashboard/crm/manager");
+  return {};
+}
+
 export async function saveKPIs(
   _prev: { error?: string; success?: boolean } | null,
   formData: FormData

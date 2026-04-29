@@ -12,6 +12,7 @@ import {
 import InviteGenerator from "@/components/crm/InviteGenerator";
 import KPIForm from "@/components/crm/KPIForm";
 import ContentTab from "@/components/crm/ContentTab";
+import MemberActions from "./MemberActions";
 import { Shield, Trophy, TrendingUp, Users, ArrowLeft, FileVideo } from "lucide-react";
 
 function defaultRange() {
@@ -198,6 +199,14 @@ export default async function CRMTeamPage({
                       <div>
                         <p className="text-sm font-bold text-[#f0f2f8]">{m.full_name || m.email}</p>
                         <p className="text-xs text-[#4b5563]">{m.days_logged} day{m.days_logged !== 1 ? "s" : ""} logged</p>
+                        <div className="mt-1.5">
+                          <MemberActions
+                            teamId={teamId}
+                            userId={m.user_id}
+                            memberName={m.full_name || m.email || "member"}
+                            email={m.email || ""}
+                          />
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">

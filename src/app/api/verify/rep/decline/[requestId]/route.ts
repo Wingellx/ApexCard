@@ -4,7 +4,7 @@ import { declineRepVerification } from "@/lib/verification-queries";
 import { sendEmail } from "@/lib/resend";
 import { buildVerificationDeclinedEmail } from "@/lib/email";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://apexcard.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.apexcard.app";
 
 export async function GET(
   _req: Request,

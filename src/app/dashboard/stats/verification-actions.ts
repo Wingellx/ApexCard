@@ -11,7 +11,7 @@ import {
 } from "@/lib/email";
 import { approveRepVerification, declineRepVerification } from "@/lib/verification-queries";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://apexcard.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.apexcard.app";
 
 async function getAuthedUser() {
   const supabase = await createClient();

@@ -8,7 +8,7 @@ import {
   declineVerificationRequest,
 } from "@/app/dashboard/stats/verification-actions";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://apexcard.app";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.apexcard.app";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);

@@ -12,7 +12,7 @@ import RecentLogs from "@/components/dashboard/RecentLogs";
 import DailyCashChart from "@/components/dashboard/DailyCashChart";
 import CloseRateTrendChart from "@/components/dashboard/CloseRateTrendChart";
 import StreakBadge from "@/components/dashboard/StreakBadge";
-import { NoLogsState, NoGoalsState } from "@/components/dashboard/EmptyState";
+import { NoGoalsState } from "@/components/dashboard/EmptyState";
 import WeeklySummary from "@/components/dashboard/WeeklySummary";
 import MonthlySummaryCard from "@/components/dashboard/MonthlySummaryCard";
 
@@ -194,9 +194,6 @@ export default async function DashboardPage() {
           </div>
         ))}
       </div>
-
-      {/* No data CTA */}
-      {!hasData && <div className="mb-6"><NoLogsState /></div>}
 
       {/* Charts */}
       {hasData && (
