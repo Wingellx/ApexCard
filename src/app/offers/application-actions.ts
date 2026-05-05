@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/resend";
 import { buildApplicationSubmittedEmail, buildApplicationStatusEmail, buildApplicationReceivedEmail } from "@/lib/email";
+import { logPhaseHistory } from "@/lib/echelon-queries";
 import type { ApplicationStatus } from "@/lib/offers-queries";
 
 export async function submitApplication(
@@ -208,6 +209,31 @@ export async function updateApplicationStatus(
       appUrl:     `${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.apexcard.app"}/dashboard/applications`,
     });
     await sendEmail({ to: rep.email, subject: email.subject, html: email.html });
+  }
+
+  // Path C: if accepted, auto-promote to on_offer for the user's Echelon team
+  if (status === "accepted") {
+    const { data: teamMembership } = await admin
+      .from("team_members")
+      .select("team_id, phase")
+      .eq("user_id", app.user_id as string)
+      .maybeSingle();
+
+    if (teamMembership && teamMembership.phase !== "on_offer") {
+      await admin
+        .from("team_members")
+        .update({ phase: "on_offer", phase_updated_at: new Date().toISOString() })
+        .eq("user_id", app.user_id as string)
+        .eq("team_id", teamMembership.team_id as string);
+
+      await logPhaseHistory({
+        userId:    app.user_id as string,
+        teamId:    teamMembership.team_id as string,
+        fromPhase: (teamMembership.phase as string) ?? "outreach",
+        toPhase:   "on_offer",
+        changedBy: user.id,
+      });
+    }
   }
 
   revalidatePath("/owner");

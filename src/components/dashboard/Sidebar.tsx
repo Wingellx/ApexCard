@@ -5,10 +5,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, PhoneCall, Target, History, Award,
-  Settings, LogOut, Menu, X, Trophy, User, Flame, Users, Zap, Shield, Dumbbell, BarChart3, BookUser, Briefcase, TrendingUp, FileText,
+  Settings, LogOut, Menu, X, Trophy, User, Flame, Users, Zap, Shield, Dumbbell, BarChart3, BookUser, Briefcase, TrendingUp, FileText, Calendar, Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signout } from "@/app/auth/actions";
+
+export interface EchelonNavProps {
+  echelonTeamId: string;
+  echelonPhase: string;
+  isEchelonManager: boolean;
+  features: {
+    leaderboard: boolean;
+    group_call_tracker: boolean;
+  };
+}
 
 interface SidebarProps {
   userName: string;
@@ -23,14 +33,49 @@ interface SidebarProps {
   role?: string | null;
   hasKPIDashboard?: boolean;
   isTeamMember?: boolean;
+  echelon?: EchelonNavProps | null;
 }
 
-function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin?: boolean, isCRMenabled?: boolean, role?: string | null, hasKPIDashboard?: boolean, isTeamMember?: boolean) {
+function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin?: boolean, isCRMenabled?: boolean, role?: string | null, hasKPIDashboard?: boolean, isTeamMember?: boolean, echelon?: EchelonNavProps | null) {
   const isSetter = role === "setter";
   const isCloser = role === "closer";
   const useCRM   = isSetter || isCloser;
 
-  // Team members get a scoped navigation
+  // Echelon team member gets a phase-specific navigation
+  if (isTeamMember && echelon) {
+    const tid = echelon.echelonTeamId;
+    const isManager = echelon.isEchelonManager;
+    const phase     = echelon.echelonPhase;
+
+    const studentItems = phase === "on_offer"
+      ? [{ href: "/dashboard/crm", label: "My CRM", icon: BookUser }]
+      : [{ href: `/dashboard/teams/${tid}/dashboard`, label: "My Dashboard", icon: LayoutDashboard }];
+
+    return [
+      {
+        label: "Echelon",
+        items: [
+          ...studentItems,
+          ...(echelon.features.leaderboard ? [{ href: `/dashboard/teams/${tid}/leaderboard`, label: "Leaderboard", icon: Star }] : []),
+        ],
+      },
+      ...(isManager ? [{
+        label: "Manager",
+        items: [
+          { href: `/dashboard/teams/${tid}/manager`,    label: "Member Hub",  icon: Shield   },
+          ...(echelon.features.group_call_tracker ? [{ href: `/dashboard/teams/${tid}/attendance`, label: "Attendance",  icon: Calendar }] : []),
+        ],
+      }] : []),
+      {
+        label: "Account",
+        items: [
+          { href: "/dashboard/profile", label: "Profile", icon: User },
+        ],
+      },
+    ];
+  }
+
+  // Non-Echelon team members get a scoped navigation
   if (isTeamMember) {
     return [
       {
@@ -109,8 +154,8 @@ function buildSections(teamId?: string | null, isIOmember?: boolean, isTeamAdmin
   ];
 }
 
-export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId, isIOmember, isTeamAdmin, isCRMenabled, role, hasKPIDashboard, isTeamMember }: SidebarProps) {
-  const sections = buildSections(teamId, isIOmember, isTeamAdmin, isCRMenabled, role, hasKPIDashboard, isTeamMember);
+export default function Sidebar({ userName, userEmail, userRole, userInitial, streak, teamId, isIOmember, isTeamAdmin, isCRMenabled, role, hasKPIDashboard, isTeamMember, echelon }: SidebarProps) {
+  const sections = buildSections(teamId, isIOmember, isTeamAdmin, isCRMenabled, role, hasKPIDashboard, isTeamMember, echelon);
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 

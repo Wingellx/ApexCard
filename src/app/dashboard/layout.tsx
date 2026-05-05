@@ -5,7 +5,11 @@ import { getProfileFull, getLoggedDates, calculateStreak, getUserTeam, getUserTe
 import { getIsIOmember } from "@/lib/io-queries";
 import { getPreviewRole, previewRoleLabel } from "@/lib/preview";
 import { getUserCustomFeature } from "@/lib/queries";
+import { useTeamFeatures } from "@/hooks/useTeamFeatures";
+import { getEchelonMemberData } from "@/lib/echelon-queries";
+import { createAdminClient } from "@/lib/supabase/admin";
 import Sidebar from "@/components/dashboard/Sidebar";
+import type { EchelonNavProps } from "@/components/dashboard/Sidebar";
 import PreviewBanner from "@/components/owner/PreviewBanner";
 import TeamMemberBanner from "@/components/dashboard/TeamMemberBanner";
 
@@ -34,6 +38,34 @@ export default async function DashboardLayout({ children }: { children: React.Re
     getUserTeamRole(user.id),
     getUserCustomFeature(user.id, "closing_kpi_dashboard"),
   ]);
+
+  // Detect Echelon membership — any team member whose team has a team_features row
+  let echelonNav: EchelonNavProps | null = null;
+  if (profile?.account_type === "team_member" && userTeam?.teamId) {
+    const features = await useTeamFeatures(userTeam.teamId);
+    const hasAnyFeature = Object.values(features).some(Boolean);
+    if (hasAnyFeature) {
+      const echelonMember = await getEchelonMemberData(user.id);
+      // Check if user is a manager for this Echelon team
+      const admin = createAdminClient();
+      const { data: memberRow } = await admin
+        .from("team_members")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("team_id", userTeam.teamId)
+        .maybeSingle();
+      const isEchelonManager = ["admin", "offer_owner"].includes((memberRow?.role as string) ?? "");
+      echelonNav = {
+        echelonTeamId:    userTeam.teamId,
+        echelonPhase:     echelonMember?.phase ?? "learning",
+        isEchelonManager,
+        features: {
+          leaderboard:       features.leaderboard,
+          group_call_tracker: features.group_call_tracker,
+        },
+      };
+    }
+  }
 
   if (!profile || !profile.onboarding_completed) redirect("/onboarding");
 
@@ -87,6 +119,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         role={effectiveRole}
         hasKPIDashboard={isPreview ? false : hasKPIDashboard}
         isTeamMember={isTeamMember}
+        echelon={isPreview ? null : echelonNav}
       />
       <div className="lg:ml-64 pt-14 lg:pt-0">
         {isPreview && <PreviewBanner role={previewRole!} />}

@@ -507,6 +507,136 @@ export function buildApplicationStatusEmail({
   return { subject, html: emailShell(body) };
 }
 
+// ── Echelon: On Offer confirmation email ──────────────────────────────────────
+
+export function buildEchelonOnOfferEmail({
+  name,
+}: {
+  name: string;
+}): { subject: string; html: string } {
+  const subject = "You're On Offer 🎉";
+  const appUrl  = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.apexcard.app";
+
+  const body = `
+    <div style="text-align:center;background:#1a3a6b;border-radius:10px;padding:24px 20px;margin-bottom:28px;">
+      <img src="${appUrl}/echelon-logo.png" alt="Echelon" style="height:48px;margin-bottom:12px;" />
+      <h1 style="margin:0;font-size:26px;font-weight:800;color:#ffffff;">You're On Offer 🎉</h1>
+    </div>
+    <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6;">Hi ${name},</p>
+    <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.6;">
+      Your request has been approved. Your CRM is now active — go close some deals.
+    </p>
+    ${ctaButton(`${appUrl}/dashboard/crm`, "Open My CRM", "#1a3a6b")}`;
+
+  return { subject, html: emailShell(body) };
+}
+
+// ── Echelon: Weekly summary email ─────────────────────────────────────────────
+
+export function echelonWeeklySummary({
+  name,
+  score,
+  rank,
+  totalMembers,
+  phase,
+  improvementNote,
+  actionItem,
+}: {
+  name:            string;
+  score:           number;
+  rank:            number;
+  totalMembers:    number;
+  phase:           string;
+  improvementNote: string;
+  actionItem:      string;
+}): { subject: string; html: string } {
+  const subject = `Your Echelon Weekly Summary — Score: ${score}/100`;
+  const appUrl  = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.apexcard.app";
+
+  const phaseLabel: Record<string, string> = {
+    learning: "Learning",
+    outreach: "Outreach",
+    on_offer: "On Offer",
+  };
+  const phaseColor: Record<string, string> = {
+    learning: "#6b7280",
+    outreach: "#2563eb",
+    on_offer: "#059669",
+  };
+
+  const scoreColor = score >= 80 ? "#059669" : score >= 60 ? "#d97706" : "#dc2626";
+
+  const body = `
+    <div style="text-align:center;background:#1a3a6b;border-radius:10px;padding:24px 20px;margin-bottom:28px;">
+      <img src="${appUrl}/echelon-logo.png" alt="Echelon" style="height:40px;margin-bottom:12px;" />
+      <h1 style="margin:0;font-size:22px;font-weight:800;color:#ffffff;">Your Weekly Summary</h1>
+    </div>
+
+    <p style="margin:0 0 16px;font-size:15px;color:#374151;">Hi ${name},</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <tr>
+        <td width="33%" style="text-align:center;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px 0 0 10px;">
+          <p style="margin:0;font-size:32px;font-weight:800;color:${scoreColor};">${score}</p>
+          <p style="margin:4px 0 0;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">Score / 100</p>
+        </td>
+        <td width="33%" style="text-align:center;padding:12px;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">
+          <p style="margin:0;font-size:24px;font-weight:800;color:#0f172a;">#${rank}</p>
+          <p style="margin:4px 0 0;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">Rank of ${totalMembers}</p>
+        </td>
+        <td width="33%" style="text-align:center;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0 10px 10px 0;">
+          <p style="margin:0;font-size:15px;font-weight:700;color:${phaseColor[phase] ?? "#6b7280"};">${phaseLabel[phase] ?? phase}</p>
+          <p style="margin:4px 0 0;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">Phase</p>
+        </td>
+      </tr>
+    </table>
+
+    <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:16px 20px;margin-bottom:16px;">
+      <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#c2410c;text-transform:uppercase;letter-spacing:0.05em;">Improvement focus</p>
+      <p style="margin:0;font-size:14px;color:#374151;line-height:1.6;">${improvementNote}</p>
+    </div>
+
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
+      <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#15803d;text-transform:uppercase;letter-spacing:0.05em;">This week's action item</p>
+      <p style="margin:0;font-size:14px;color:#374151;line-height:1.6;">${actionItem}</p>
+    </div>
+
+    ${ctaButton(`${appUrl}/dashboard`, "Open Dashboard", "#1a3a6b")}`;
+
+  return { subject, html: emailShell(body) };
+}
+
+// ── Echelon: Follow-up reminder email ────────────────────────────────────────
+
+export function echelonFollowUpReminder({
+  name,
+  companyName,
+  followUpDate,
+}: {
+  name:         string;
+  companyName:  string;
+  followUpDate: string;
+}): { subject: string; html: string } {
+  const subject = `Follow-up reminder — ${companyName}`;
+  const appUrl  = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.apexcard.app";
+
+  const fmtDate = (d: string) =>
+    new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+
+  const body = `
+    <div style="text-align:center;background:#1a3a6b;border-radius:10px;padding:20px;margin-bottom:24px;">
+      <img src="${appUrl}/echelon-logo.png" alt="Echelon" style="height:36px;margin-bottom:10px;" />
+      <h1 style="margin:0;font-size:20px;font-weight:800;color:#ffffff;">Follow-up Due Today</h1>
+    </div>
+    <p style="margin:0 0 16px;font-size:15px;color:#374151;">Hi ${name},</p>
+    <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.6;">
+      Your follow-up with <strong>${companyName}</strong> is due today (${fmtDate(followUpDate)}).
+    </p>
+    ${ctaButton(`${appUrl}/dashboard`, "Log Follow-up", "#1a3a6b")}`;
+
+  return { subject, html: emailShell(body) };
+}
+
 // ── Waitlist welcome email ─────────────────────────────────────────
 
 export function buildWaitlistWelcomeEmail(): { subject: string; html: string } {
