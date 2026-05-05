@@ -1,13 +1,5 @@
 import { cookies } from "next/headers";
 
-export const SBO_ADMIN_COOKIE = "apex_sbo_admin";
-export const SBO_TEAM_ID = "c0ffee00-0000-0000-0000-000000000001";
-
-export async function getSBOAdminMode(): Promise<boolean> {
-  const store = await cookies();
-  return store.get(SBO_ADMIN_COOKIE)?.value === "1";
-}
-
 export const PREVIEW_COOKIE = "apex_preview_role";
 
 export const PREVIEW_ROLES = [

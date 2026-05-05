@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { PREVIEW_COOKIE, PREVIEW_ROLES, SBO_ADMIN_COOKIE } from "@/lib/preview";
+import { PREVIEW_COOKIE, PREVIEW_ROLES } from "@/lib/preview";
 
 async function assertVerifiedOwner() {
   const supabase = await createClient();
@@ -55,25 +55,6 @@ export async function clearPreviewRole(): Promise<void> {
   if (!user) redirect("/auth/login");
   const store = await cookies();
   store.delete(PREVIEW_COOKIE);
-  redirect("/owner");
-}
-
-// ── SetByOffers admin demo mode ───────────────────────────────
-
-export async function enterSBOAdminMode(): Promise<void> {
-  const user = await assertVerifiedOwner();
-  if (!user) return;
-  const store = await cookies();
-  store.set(SBO_ADMIN_COOKIE, "1", { path: "/", sameSite: "lax", httpOnly: true });
-  redirect("/offers");
-}
-
-export async function exitSBOAdminMode(): Promise<void> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
-  const store = await cookies();
-  store.delete(SBO_ADMIN_COOKIE);
   redirect("/owner");
 }
 

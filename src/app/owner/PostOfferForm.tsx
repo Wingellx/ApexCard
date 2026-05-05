@@ -273,7 +273,7 @@ export default function PostOfferForm() {
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-cyan-500/10 to-blue-600/10 hover:from-cyan-500/20 hover:to-blue-600/20 text-cyan-300 border border-cyan-500/20 hover:border-cyan-400/40 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Briefcase className="w-4 h-4" />}
-            {pending ? "Posting…" : "Post Offer to SetByOffers"}
+            {pending ? "Posting…" : "Post Offer to Board"}
           </button>
         </div>
       </form>
