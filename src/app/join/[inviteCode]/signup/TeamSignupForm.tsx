@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { ArrowRight, XCircle } from "lucide-react";
 import { signupForTeam } from "./actions";
+import type { InviteRole, TokenType } from "@/lib/invite-queries";
 
 const inputClass =
   "w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-[#f0f2f8] placeholder-[#4b5563] focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40 transition-colors";
@@ -10,11 +11,15 @@ const inputClass =
 export default function TeamSignupForm({
   inviteCode,
   teamName,
+  assignedRole,
+  tokenType,
 }: {
-  inviteCode: string;
-  teamName:   string;
+  inviteCode:   string;
+  teamName:     string;
+  assignedRole: InviteRole;
+  tokenType:    TokenType;
 }) {
-  const action = signupForTeam.bind(null, inviteCode);
+  const action = signupForTeam.bind(null, inviteCode, assignedRole, tokenType);
   const [state, formAction, isPending] = useActionState(action, null);
 
   return (

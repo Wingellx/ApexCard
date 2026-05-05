@@ -4,9 +4,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { InviteRole, TokenType } from "@/lib/invite-queries";
 
 export async function signupForTeam(
-  inviteCode: string,
+  inviteCode:   string,
+  assignedRole: InviteRole,
+  tokenType:    TokenType,
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error?: string }> {
@@ -21,10 +24,20 @@ export async function signupForTeam(
   const admin = createAdminClient();
 
   // Validate invite code and find the team
-  const { data: allTeams } = await admin.from("teams").select("id, name, invite_code");
-  const team = (allTeams ?? []).find(
-    t => (t.invite_code as string).trim() === inviteCode.trim()
-  );
+  const { data: allTeams } = await admin
+    .from("teams")
+    .select("id, name, invite_code, invite_token_owner, invite_token_manager, invite_token_member");
+
+  const tok = inviteCode.trim();
+  const team = (allTeams ?? []).find(t => {
+    const row = t as Record<string, unknown>;
+    return (
+      (row.invite_token_owner   as string | null)?.trim() === tok ||
+      (row.invite_token_manager as string | null)?.trim() === tok ||
+      (row.invite_token_member  as string | null)?.trim() === tok ||
+      (t.invite_code             as string | null)?.trim() === tok
+    );
+  });
   if (!team) return { error: "Invalid or expired invite link." };
 
   // Create the auth user
@@ -38,31 +51,31 @@ export async function signupForTeam(
   if (signupError) return { error: signupError.message };
 
   // Email confirmation required — we can't complete setup yet
-  if (!data.session) {
-    redirect(`/auth/check-email`);
-  }
+  if (!data.session) redirect(`/auth/check-email`);
 
   const userId = data.user!.id;
 
-  // Update profile: team_member account type, skip full onboarding
+  // Update profile
   await admin.from("profiles").update({
     full_name,
     account_type:         "team_member",
     onboarding_completed: true,
   }).eq("id", userId);
 
-  // Check current team members to decide role
-  const { data: existingMembers } = await admin
-    .from("team_members")
-    .select("user_id")
-    .eq("team_id", team.id as string);
-
-  const isFirst = !existingMembers?.length;
+  // Determine role: typed tokens always win; legacy_code gives first-member admin
+  let role: string = assignedRole;
+  if (tokenType === "legacy_code") {
+    const { data: existingMembers } = await admin
+      .from("team_members")
+      .select("user_id")
+      .eq("team_id", team.id as string);
+    if (!existingMembers?.length) role = "admin";
+  }
 
   await admin.from("team_members").insert({
     team_id: team.id as string,
     user_id: userId,
-    role:    isFirst ? "admin" : "member",
+    role,
   });
 
   revalidatePath("/", "layout");

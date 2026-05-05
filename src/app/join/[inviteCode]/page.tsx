@@ -1,9 +1,15 @@
 import Link from "next/link";
 import { Users, ArrowRight, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getTeamByInviteCode, getUserTeam } from "@/lib/queries";
+import { getUserTeam } from "@/lib/queries";
+import { getTeamByToken } from "@/lib/invite-queries";
 import { IO_TEAM_ID } from "@/lib/io-score";
 import JoinButton from "./JoinButton";
+
+const ROLE_LABELS: Record<string, string> = {
+  offer_owner:   "Offer Owner",
+  sales_manager: "Sales Manager",
+};
 
 export default async function JoinPage({
   params,
@@ -12,9 +18,9 @@ export default async function JoinPage({
 }) {
   const { inviteCode } = await params;
 
-  const team = await getTeamByInviteCode(inviteCode);
+  const result = await getTeamByToken(inviteCode);
 
-  if (!team) {
+  if (!result) {
     return (
       <div className="min-h-screen bg-[#080a0e] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
@@ -34,6 +40,8 @@ export default async function JoinPage({
     );
   }
 
+  const { assignedRole, tokenType } = result;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -42,12 +50,14 @@ export default async function JoinPage({
 
   if (user) {
     const existing = await getUserTeam(user.id);
-    if (existing?.teamId === team.id)  status = "already_member";
-    else if (existing)                 status = "other_team";
-    else                               status = "not_member";
+    if (existing?.teamId === result.id) status = "already_member";
+    else if (existing)                  status = "other_team";
+    else                                status = "not_member";
   }
 
-  const isIO = team.id === IO_TEAM_ID;
+  const isIO          = result.id === IO_TEAM_ID;
+  const roleLabel     = ROLE_LABELS[assignedRole];
+  const showRoleBadge = assignedRole !== "member" && tokenType !== "legacy_code";
 
   return (
     <div className="min-h-screen bg-[#080a0e] flex flex-col items-center justify-center px-4 py-12">
@@ -70,10 +80,10 @@ export default async function JoinPage({
           <div className="p-8 text-center">
 
             {/* Team avatar */}
-            {team.logo_url ? (
+            {result.logo_url ? (
               <img
-                src={team.logo_url}
-                alt={team.name}
+                src={result.logo_url}
+                alt={result.name}
                 className="w-16 h-16 rounded-2xl mx-auto mb-5 object-cover border border-white/[0.08]"
               />
             ) : (
@@ -86,23 +96,29 @@ export default async function JoinPage({
               {isIO ? "You've been called to join" : "You've been invited to join"}
             </p>
             <h1 className="text-2xl font-extrabold text-[#f0f2f8] tracking-tight mb-2">
-              {isIO ? "Join the Brotherhood ⚔️" : team.name}
+              {isIO ? "Join the Brotherhood ⚔️" : result.name}
             </h1>
+
+            {showRoleBadge && (
+              <p className="text-xs font-semibold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-3 py-1 inline-block mb-3">
+                You&apos;ll join as {roleLabel}
+              </p>
+            )}
 
             {isIO ? (
               <p className="text-sm text-[#6b7280] leading-relaxed mb-4 max-w-xs mx-auto">
                 A global brotherhood of men who execute daily. Built on accountability, fitness, and relentless improvement.
               </p>
-            ) : team.description ? (
+            ) : result.description ? (
               <p className="text-sm text-[#6b7280] leading-relaxed mb-4 max-w-xs mx-auto">
-                {team.description}
+                {result.description}
               </p>
             ) : null}
 
             <div className="inline-flex items-center gap-1.5 text-xs text-[#4b5563] mb-8">
               <Users className="w-3.5 h-3.5" />
               <span>
-                {team.memberCount} {isIO ? `brother${team.memberCount !== 1 ? "s" : ""}` : `member${team.memberCount !== 1 ? "s" : ""}`}
+                {result.memberCount} {isIO ? `brother${result.memberCount !== 1 ? "s" : ""}` : `member${result.memberCount !== 1 ? "s" : ""}`}
               </span>
             </div>
 
@@ -137,7 +153,13 @@ export default async function JoinPage({
             )}
 
             {status === "not_member" && (
-              <JoinButton inviteCode={inviteCode} teamName={isIO ? "the Brotherhood" : team.name} isIO={isIO} />
+              <JoinButton
+                inviteCode={inviteCode}
+                assignedRole={assignedRole}
+                tokenType={tokenType}
+                teamName={isIO ? "the Brotherhood" : result.name}
+                isIO={isIO}
+              />
             )}
 
             {status === "guest" && (

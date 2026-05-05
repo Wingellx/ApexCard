@@ -2,7 +2,8 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileFull, getOwnerTeamDetail } from "@/lib/queries";
-import CopyInviteButton from "@/components/owner/CopyInviteButton";
+import { getTeamInviteTokens } from "@/lib/invite-queries";
+import InviteLinksPanel from "@/components/teams/InviteLinksPanel";
 import CloserCrmPanel from "@/components/owner/CloserCrmPanel";
 import { signout } from "@/app/auth/actions";
 import {
@@ -44,7 +45,10 @@ export default async function OwnerTeamDetailPage({
     redirect("/owner");
   }
 
-  const team = await getOwnerTeamDetail(teamId);
+  const [team, inviteTokens] = await Promise.all([
+    getOwnerTeamDetail(teamId),
+    getTeamInviteTokens(teamId),
+  ]);
   if (!team) notFound();
 
   return (
@@ -102,25 +106,28 @@ export default async function OwnerTeamDetailPage({
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-10">
 
-        {/* Description + invite */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start">
-          <div className="flex-1">
-            {team.description ? (
-              <p className="text-sm text-[#6b7280] leading-relaxed">{team.description}</p>
-            ) : (
-              <p className="text-sm text-[#374151] italic">No description.</p>
-            )}
-            {team.division && (
-              <div className="flex items-center gap-1.5 mt-2">
-                <BarChart3 className="w-3 h-3 text-[#4b5563]" />
-                <span className="text-[11px] text-[#4b5563] capitalize">{team.division} division</span>
-              </div>
-            )}
-          </div>
-          <div className="w-full sm:w-48 shrink-0">
-            <CopyInviteButton teamId={team.id} />
-          </div>
+        {/* Description */}
+        <div>
+          {team.description ? (
+            <p className="text-sm text-[#6b7280] leading-relaxed">{team.description}</p>
+          ) : (
+            <p className="text-sm text-[#374151] italic">No description.</p>
+          )}
+          {team.division && (
+            <div className="flex items-center gap-1.5 mt-2">
+              <BarChart3 className="w-3 h-3 text-[#4b5563]" />
+              <span className="text-[11px] text-[#4b5563] capitalize">{team.division} division</span>
+            </div>
+          )}
         </div>
+
+        {/* Invite links — verified owners see all three */}
+        <InviteLinksPanel
+          ownerToken={inviteTokens.ownerToken}
+          managerToken={inviteTokens.managerToken}
+          memberToken={inviteTokens.memberToken}
+          viewerRole="offer_owner"
+        />
 
         {/* Sub-teams */}
         {team.subTeams.length > 0 && (

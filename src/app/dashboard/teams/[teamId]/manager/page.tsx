@@ -3,9 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getEchelonTeamMembers, getUserGroupCallCount, getUserScore } from "@/lib/echelon-queries";
 import { useTeamFeatures } from "@/hooks/useTeamFeatures";
+import { getTeamInviteTokens } from "@/lib/invite-queries";
 import type { EchelonMemberDetail } from "@/lib/echelon-queries";
 import MemberCard from "./MemberCard";
 import OfferRequestCard from "./OfferRequestCard";
+import InviteLinksPanel from "@/components/teams/InviteLinksPanel";
 import { Shield, Users } from "lucide-react";
 
 export default async function EchelonManagerPage({
@@ -35,9 +37,10 @@ export default async function EchelonManagerPage({
   const features = await useTeamFeatures(teamId);
   if (!features.group_call_tracker && !features.crm) notFound();
 
-  const [members, teamRow] = await Promise.all([
+  const [members, teamRow, inviteTokens] = await Promise.all([
     getEchelonTeamMembers(teamId),
     admin.from("teams").select("name").eq("id", teamId).maybeSingle(),
+    getTeamInviteTokens(teamId),
   ]);
 
   // Enrich members with group call count and score
@@ -95,6 +98,14 @@ export default async function EchelonManagerPage({
           </div>
         ))}
       </div>
+
+      {/* Invite links */}
+      <InviteLinksPanel
+        ownerToken={inviteTokens.ownerToken}
+        managerToken={inviteTokens.managerToken}
+        memberToken={inviteTokens.memberToken}
+        viewerRole={membership.role as string}
+      />
 
       {/* Offer requests card */}
       {pendingRequests.length > 0 && (

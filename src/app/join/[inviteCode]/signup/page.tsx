@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Users } from "lucide-react";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getTeamByToken } from "@/lib/invite-queries";
 import TeamSignupForm from "./TeamSignupForm";
 
 export default async function TeamSignupPage({
@@ -10,13 +10,9 @@ export default async function TeamSignupPage({
 }) {
   const { inviteCode } = await params;
 
-  const admin = createAdminClient();
-  const { data: allTeams } = await admin.from("teams").select("id, name, invite_code");
-  const team = (allTeams ?? []).find(
-    t => (t.invite_code as string).trim() === inviteCode.trim()
-  );
+  const result = await getTeamByToken(inviteCode);
 
-  if (!team) {
+  if (!result) {
     return (
       <div className="min-h-screen bg-[#080a0e] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
@@ -56,7 +52,7 @@ export default async function TeamSignupPage({
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold text-[#4b5563] uppercase tracking-widest">You&apos;re joining</p>
-                <p className="text-base font-extrabold text-[#f0f2f8] tracking-tight truncate">{team.name as string}</p>
+                <p className="text-base font-extrabold text-[#f0f2f8] tracking-tight truncate">{result.name}</p>
               </div>
             </div>
 
@@ -65,7 +61,12 @@ export default async function TeamSignupPage({
               You&apos;ll be added to the team as soon as you sign up.
             </p>
 
-            <TeamSignupForm inviteCode={inviteCode} teamName={team.name as string} />
+            <TeamSignupForm
+              inviteCode={inviteCode}
+              teamName={result.name}
+              assignedRole={result.assignedRole}
+              tokenType={result.tokenType}
+            />
 
             <p className="text-center text-xs text-[#374151] mt-6">
               Already have an account?{" "}

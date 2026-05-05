@@ -3,9 +3,22 @@
 import { useActionState } from "react";
 import { joinTeam } from "./actions";
 import { XCircle, ArrowRight } from "lucide-react";
+import type { InviteRole, TokenType } from "@/lib/invite-queries";
 
-export default function JoinButton({ inviteCode, teamName, isIO }: { inviteCode: string; teamName: string; isIO?: boolean }) {
-  const action = joinTeam.bind(null, inviteCode);
+export default function JoinButton({
+  inviteCode,
+  assignedRole,
+  tokenType,
+  teamName,
+  isIO,
+}: {
+  inviteCode:   string;
+  assignedRole: InviteRole;
+  tokenType:    TokenType;
+  teamName:     string;
+  isIO?:        boolean;
+}) {
+  const action = joinTeam.bind(null, inviteCode, assignedRole, tokenType);
   const [state, formAction, isPending] = useActionState(action, null);
 
   return (

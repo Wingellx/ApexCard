@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getUserTeam, getUserTeamRole, getAdminTeamData } from "@/lib/queries";
+import { getTeamInviteTokens } from "@/lib/invite-queries";
 import { setMemberTrainingSplit, removeMember } from "./actions";
 import { Shield, Users, Flame, PhoneCall, Calendar, Trash2 } from "lucide-react";
 import AdminMemberCard from "./AdminMemberCard";
+import InviteLinksPanel from "@/components/teams/InviteLinksPanel";
 
 const ROLE_LABELS: Record<string, string> = {
   closer:   "Closer",
@@ -26,7 +28,10 @@ export default async function TeamAdminPage() {
 
   if (role !== "admin" || !userTeam) redirect("/dashboard/team");
 
-  const members = await getAdminTeamData(userTeam.teamId);
+  const [members, inviteTokens] = await Promise.all([
+    getAdminTeamData(userTeam.teamId),
+    getTeamInviteTokens(userTeam.teamId),
+  ]);
 
   return (
     <div className="px-4 sm:px-8 py-6 sm:py-8 max-w-[900px] space-y-6">
@@ -49,6 +54,14 @@ export default async function TeamAdminPage() {
         <div className="flex items-center gap-1.5"><PhoneCall className="w-3 h-3" /> Calls (7d)</div>
         <div className="flex items-center gap-1.5"><Calendar className="w-3 h-3" /> Training split</div>
       </div>
+
+      {/* Invite links */}
+      <InviteLinksPanel
+        ownerToken={inviteTokens.ownerToken}
+        managerToken={inviteTokens.managerToken}
+        memberToken={inviteTokens.memberToken}
+        viewerRole="admin"
+      />
 
       {/* Members */}
       {members.length === 0 ? (
