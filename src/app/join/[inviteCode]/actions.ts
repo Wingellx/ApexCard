@@ -50,18 +50,16 @@ export async function joinTeam(
   if (profileError) return { error: "Could not load your profile. Please try again." };
   if (!profile)     return { error: "Your profile hasn't been set up yet. Please complete sign-up first." };
 
-  // Check for existing membership
+  // Check if already a member of this specific team
   const { data: existing, error: memberCheckError } = await admin
     .from("team_members")
     .select("team_id")
     .eq("user_id", user.id)
+    .eq("team_id", matchedTeam.id)
     .maybeSingle();
 
   if (memberCheckError) return { error: "Could not check membership status. Please try again." };
-  if (existing) {
-    if (existing.team_id === matchedTeam.id) return { error: "You're already on this team." };
-    return { error: "You're already a member of another team. Leave your current team first." };
-  }
+  if (existing) return { error: "You're already a member of this team." };
 
   // For typed tokens, always use the specified role.
   // For legacy invite_code, first member becomes admin for backward compat.

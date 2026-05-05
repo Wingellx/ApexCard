@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Users, ArrowRight, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getUserTeam } from "@/lib/queries";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getTeamByToken } from "@/lib/invite-queries";
 import { IO_TEAM_ID } from "@/lib/io-score";
 import JoinButton from "./JoinButton";
@@ -45,14 +45,18 @@ export default async function JoinPage({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  type Status = "guest" | "already_member" | "other_team" | "not_member";
+  type Status = "guest" | "already_member" | "not_member";
   let status: Status = "guest";
 
   if (user) {
-    const existing = await getUserTeam(user.id);
-    if (existing?.teamId === result.id) status = "already_member";
-    else if (existing)                  status = "other_team";
-    else                                status = "not_member";
+    const admin = createAdminClient();
+    const { data: membership } = await admin
+      .from("team_members")
+      .select("team_id")
+      .eq("user_id", user.id)
+      .eq("team_id", result.id)
+      .maybeSingle();
+    status = membership ? "already_member" : "not_member";
   }
 
   const isIO          = result.id === IO_TEAM_ID;
@@ -134,20 +138,6 @@ export default async function JoinPage({
                   className={`inline-flex items-center justify-center gap-2 w-full text-sm font-semibold px-6 py-3 rounded-xl transition-colors ${isIO ? "bg-white hover:bg-white/90 text-black" : "bg-indigo-500 hover:bg-indigo-400 text-white"}`}
                 >
                   {isIO ? "Go to IO Dashboard" : "View team dashboard"} <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
-            )}
-
-            {status === "other_team" && (
-              <div className="space-y-3">
-                <p className="text-sm text-[#6b7280] leading-relaxed">
-                  You&apos;re already a member of another team. Leave your current team to join this one.
-                </p>
-                <Link
-                  href="/dashboard/team"
-                  className="inline-flex items-center justify-center gap-2 text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
-                >
-                  View your current team →
                 </Link>
               </div>
             )}
