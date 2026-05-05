@@ -81,15 +81,17 @@ export async function getCommunityRankings(division?: Division): Promise<Communi
 
   // Fetch all teams + members (fetch-all pattern — PostgREST filter unreliable)
   const [{ data: teams }, { data: allMembers }] = await Promise.all([
-    admin.from("teams").select("id, name, logo_url, division, tier, community_type"),
+    admin.from("teams").select("id, name, logo_url, division, tier, community_type, parent_team_id"),
     admin.from("team_members").select("user_id, team_id"),
   ]);
 
   if (!teams?.length) return [];
 
-  const filtered = division
-    ? (teams as { id: string; name: string; logo_url: string | null; division: string; tier: number; community_type: string }[]).filter(t => t.division === division)
-    : (teams as { id: string; name: string; logo_url: string | null; division: string; tier: number; community_type: string }[]);
+  type TeamRow = { id: string; name: string; logo_url: string | null; division: string; tier: number; community_type: string; parent_team_id: string | null };
+
+  const filtered = (teams as TeamRow[])
+    .filter(t => !t.parent_team_id)
+    .filter(t => !division || t.division === division);
 
   if (!filtered.length) return [];
 
