@@ -175,8 +175,8 @@ export default function Sidebar({ userName, userEmail, userRole, userInitial, st
             <span className="text-[13px] font-bold text-violet-300">{userInitial}</span>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-semibold text-[#e5e7eb] truncate leading-tight">{userName}</p>
-            <p className="text-[11px] text-[#374151] truncate mt-0.5">{userRole}</p>
+            <p className="text-[13px] font-semibold text-zinc-100 truncate leading-tight">{userName}</p>
+            <p className="text-[11px] text-zinc-500 truncate mt-0.5">{userRole}</p>
           </div>
         </div>
         {streak > 0 && (
@@ -193,10 +193,10 @@ export default function Sidebar({ userName, userEmail, userRole, userInitial, st
 
   function NavContent() {
     return (
-      <nav className="flex-1 px-3 py-2 overflow-y-auto space-y-5">
+      <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-5">
         {sections.map((section) => (
           <div key={section.label}>
-            <p className="text-[9px] font-bold text-[#2d3147] uppercase tracking-[0.18em] px-2 mb-1.5">
+            <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest px-3 mb-1.5">
               {section.label}
             </p>
             <div className="space-y-0.5">
@@ -207,15 +207,15 @@ export default function Sidebar({ userName, userEmail, userRole, userInitial, st
                     key={href}
                     href={href}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150",
+                      "flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors duration-150",
                       active
-                        ? "text-white bg-white/[0.07] shadow-[inset_2px_0_0_0_rgba(139,92,246,0.85)]"
-                        : "text-[#4b5563] hover:text-[#9ca3af] hover:bg-white/[0.04]"
+                        ? "text-violet-300 bg-violet-600/10 shadow-[inset_2px_0_0_0_theme(colors.violet.500)]"
+                        : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
                     )}
                   >
                     <Icon className={cn(
                       "w-4 h-4 shrink-0 transition-colors",
-                      active ? "text-violet-400" : "text-[#2d3147]"
+                      active ? "text-violet-400" : "text-zinc-600"
                     )} />
                     {label}
                   </Link>
@@ -234,24 +234,24 @@ export default function Sidebar({ userName, userEmail, userRole, userInitial, st
         <Link
           href="/dashboard/settings"
           className={cn(
-            "flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150",
+            "flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors duration-150",
             isActive("/dashboard/settings")
-              ? "text-white bg-white/[0.07] shadow-[inset_2px_0_0_0_rgba(139,92,246,0.85)]"
-              : "text-[#4b5563] hover:text-[#9ca3af] hover:bg-white/[0.04]"
+              ? "text-violet-300 bg-violet-600/10 shadow-[inset_2px_0_0_0_theme(colors.violet.500)]"
+              : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
           )}
         >
           <Settings className={cn(
             "w-4 h-4 shrink-0",
-            isActive("/dashboard/settings") ? "text-violet-400" : "text-[#2d3147]"
+            isActive("/dashboard/settings") ? "text-violet-400" : "text-zinc-600"
           )} />
           Settings
         </Link>
         <form action={signout}>
           <button
             type="submit"
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium text-[#4b5563] hover:text-rose-400 hover:bg-rose-500/[0.05] transition-all duration-150"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium text-zinc-500 hover:text-rose-400 hover:bg-rose-500/[0.05] transition-colors duration-150"
           >
-            <LogOut className="w-4 h-4 shrink-0 text-[#2d3147]" />
+            <LogOut className="w-4 h-4 shrink-0 text-zinc-600" />
             Sign out
           </button>
         </form>

@@ -101,8 +101,8 @@ export default async function StatsPage() {
       <div className="px-4 sm:px-8 py-6 sm:py-8 max-w-[900px]">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center justify-center">
-              <Award className="w-5 h-5 text-indigo-400" />
+            <div className="w-10 h-10 bg-violet-500/10 border border-violet-500/20 rounded-xl flex items-center justify-center">
+              <Award className="w-5 h-5 text-violet-400" />
             </div>
             <div>
               <h1 className="text-2xl font-extrabold text-[#f0f2f8] tracking-tight">Lifetime Stats</h1>
@@ -112,7 +112,7 @@ export default async function StatsPage() {
           <div className="flex items-center gap-2">
             <a
               href={publicUrl} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-[#6b7280] hover:text-[#f0f2f8] border border-[#1e2130] hover:border-[#2a2f45] px-3 py-2 rounded-lg transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-100 border border-zinc-700/50 hover:border-zinc-600 px-3 py-2 rounded-lg transition-colors duration-150"
             >
               <ExternalLink className="w-3.5 h-3.5" /> Preview card
             </a>
@@ -202,7 +202,7 @@ export default async function StatsPage() {
           }} />
           <a
             href={publicUrl} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-[#6b7280] hover:text-[#f0f2f8] border border-[#1e2130] hover:border-[#2a2f45] px-3 py-2 rounded-lg transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-100 border border-zinc-700/50 hover:border-zinc-600 px-3 py-2 rounded-lg transition-colors duration-150"
           >
             <ExternalLink className="w-3.5 h-3.5" /> Preview card
           </a>
@@ -327,7 +327,7 @@ export default async function StatsPage() {
       )}
 
       {/* Share callout */}
-      <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl px-5 py-4 flex items-center justify-between mb-4">
+      <div className="bg-violet-500/5 border border-violet-500/20 rounded-xl px-5 py-4 flex items-center justify-between mb-4 shadow-lg shadow-black/20">
         <div>
           <p className="text-sm font-semibold text-[#f0f2f8] mb-0.5">Share your stats card</p>
           <p className="text-xs text-[#6b7280]">Public link — clean stats card for job apps, offers, or flex.</p>

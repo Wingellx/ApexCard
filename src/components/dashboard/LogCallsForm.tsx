@@ -67,7 +67,7 @@ function Field({
 }: FieldProps) {
   const inputClass = cn(
     "w-full bg-[#0d0f15] border rounded-lg text-sm text-[#f0f2f8] placeholder-[#6b7280]",
-    "focus:outline-none focus:ring-1 transition-colors",
+    "focus:outline-none focus:ring-2 focus:border-transparent transition-colors duration-150",
     readOnly ? "opacity-50 cursor-not-allowed" : "",
     prefix ? "pl-8 pr-4 py-3" : "px-4 py-3",
     accent
@@ -75,10 +75,10 @@ function Field({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="flex items-center gap-2 text-xs font-semibold text-[#6b7280] uppercase tracking-wider">
-        <span className="text-[#6b7280]">{icon}</span>
+      <label className="flex items-center gap-2 text-xs font-medium text-zinc-400 uppercase tracking-wider">
+        <span className="text-zinc-500">{icon}</span>
         {label}
-        {sublabel && <span className="normal-case text-[#6b7280]/60 font-normal tracking-normal">· {sublabel}</span>}
+        {sublabel && <span className="normal-case text-zinc-600 font-normal tracking-normal">· {sublabel}</span>}
       </label>
       <div className="relative">
         {prefix && (
@@ -114,8 +114,8 @@ function Field({
 
 function StatPill({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b border-[#1e2130] last:border-0">
-      <span className="text-xs text-[#6b7280]">{label}</span>
+    <div className="flex items-center justify-between py-2.5 border-b border-zinc-800/50 last:border-0">
+      <span className="text-xs text-zinc-500">{label}</span>
       <span className={cn("text-sm font-bold tabular-nums", color)}>{value}</span>
     </div>
   );
@@ -161,7 +161,7 @@ export default function LogCallsForm() {
 
           {/* Date */}
           <div className="bg-[#111318] border border-[#1e2130] rounded-xl p-6">
-            <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest mb-4">Log Date</p>
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-4">Log Date</p>
             <Field
               label="Date"
               name="date"
@@ -175,7 +175,7 @@ export default function LogCallsForm() {
 
           {/* Call volume */}
           <div className="bg-[#111318] border border-[#1e2130] rounded-xl p-6">
-            <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest mb-4">Call Volume</p>
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-4">Call Volume</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Field
                 label="Calls Taken"
@@ -211,7 +211,7 @@ export default function LogCallsForm() {
 
           {/* Offers & closes */}
           <div className="bg-[#111318] border border-[#1e2130] rounded-xl p-6">
-            <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest mb-4">Offers & Closes</p>
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-4">Offers & Closes</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field
                 label="Offers Made"
@@ -236,7 +236,7 @@ export default function LogCallsForm() {
 
           {/* Revenue */}
           <div className="bg-[#111318] border border-[#1e2130] rounded-xl p-6">
-            <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest mb-4">Revenue</p>
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-4">Revenue</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field
                 label="Cash Collected"
@@ -263,7 +263,7 @@ export default function LogCallsForm() {
 
           {/* Notes */}
           <div className="bg-[#111318] border border-[#1e2130] rounded-xl p-6">
-            <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest mb-4">Notes</p>
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-4">Notes</p>
             <Field
               label="Notes"
               name="notes"
@@ -285,7 +285,7 @@ export default function LogCallsForm() {
 
           {/* Submit */}
           <div className="flex items-center justify-end gap-3 pb-10">
-            <a href="/dashboard" className="text-sm text-[#6b7280] hover:text-[#f0f2f8] transition-colors">
+            <a href="/dashboard" className="text-sm text-zinc-500 hover:text-zinc-100 transition-colors duration-150">
               Cancel
             </a>
             <Button type="submit" size="lg" loading={isPending}>
@@ -298,8 +298,8 @@ export default function LogCallsForm() {
         <div className="xl:col-span-1">
           <div className="sticky top-8 bg-[#111318] border border-[#1e2130] rounded-xl p-6">
             <div className="flex items-center gap-2 mb-5">
-              <TrendingUp className="w-4 h-4 text-indigo-400" />
-              <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest">Today&apos;s Stats</p>
+              <TrendingUp className="w-4 h-4 text-violet-400" />
+              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Today&apos;s Stats</p>
             </div>
 
             <div className="space-y-0">
@@ -357,7 +357,7 @@ export default function LogCallsForm() {
               </div>
             )}
 
-            <p className="text-[10px] text-[#6b7280]/50 mt-6 text-center">Updates as you type</p>
+            <p className="text-[10px] text-zinc-600 mt-6 text-center">Updates as you type</p>
           </div>
         </div>
       </div>

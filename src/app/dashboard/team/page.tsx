@@ -41,7 +41,7 @@ function RankBadge({ rank, isYou }: { rank: number; isYou: boolean }) {
     <div className={`${base} bg-orange-700/10 border border-orange-700/25 text-orange-600`}>3</div>
   );
   return (
-    <div className={`${base} ${isYou ? "bg-indigo-500/15 border border-indigo-500/30 text-indigo-400" : "bg-[#1a1d28] border border-[#1e2130] text-[#374151]"} text-xs`}>
+    <div className={`${base} ${isYou ? "bg-violet-500/15 border border-violet-500/30 text-violet-400" : "bg-[#1a1d28] border border-[#1e2130] text-zinc-600"} text-xs`}>
       {rank}
     </div>
   );
@@ -51,14 +51,14 @@ function RankBadge({ rank, isYou }: { rank: number; isYou: boolean }) {
 
 function MemberRow({ entry, rank, isYou }: { entry: TeamMemberStat; rank: number; isYou: boolean }) {
   return (
-    <div className={`flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 rounded-xl transition-colors ${isYou ? "bg-indigo-500/[0.06] border border-indigo-500/20" : "bg-[#0f1117] border border-[#1e2130] hover:bg-[#111520]"}`}>
+    <div className={`flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 rounded-xl transition-colors duration-150 ${isYou ? "bg-violet-500/[0.06] border border-violet-500/20" : "bg-[#0f1117] border border-[#1e2130] hover:bg-zinc-800/30 hover:border-zinc-700/50"}`}>
       <RankBadge rank={rank} isYou={isYou} />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-0.5">
-          <span className={`font-bold truncate text-[13px] ${isYou ? "text-indigo-300" : rank <= 3 ? "text-[#f0f2f8]" : "text-[#d1d5db]"}`}>
+          <span className={`font-bold truncate text-[13px] ${isYou ? "text-violet-300" : rank <= 3 ? "text-[#f0f2f8]" : "text-zinc-300"}`}>
             {entry.name}
-            {isYou && <span className="text-[10px] font-semibold text-indigo-400/70 ml-1.5">you</span>}
+            {isYou && <span className="text-[10px] font-semibold text-violet-400/70 ml-1.5">you</span>}
           </span>
           {entry.isVerified && <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />}
           {entry.role && (
@@ -79,7 +79,7 @@ function MemberRow({ entry, rank, isYou }: { entry: TeamMemberStat; rank: number
       {entry.username ? (
         <Link
           href={`/card/${entry.username}`}
-          className="shrink-0 p-1.5 text-[#2d3147] hover:text-indigo-400 transition-colors rounded-lg hover:bg-indigo-500/[0.06]"
+          className="shrink-0 p-1.5 text-zinc-600 hover:text-violet-400 transition-colors duration-150 rounded-lg hover:bg-violet-500/[0.06]"
           title="View ApexCard"
           target="_blank"
           rel="noopener noreferrer"
@@ -150,7 +150,7 @@ function LeaderboardSection({
     <div className="bg-[#111318] border border-[#1e2130] rounded-2xl overflow-hidden">
       <div className={`h-[2px] ${accentClass}`} />
       <div className="p-5">
-        <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest mb-4">{title}</p>
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-4">{title}</p>
         {children}
       </div>
     </div>
@@ -210,10 +210,10 @@ export default async function TeamPage() {
               className="w-12 h-12 rounded-xl object-cover border border-white/[0.08] shrink-0"
             />
           ) : (
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isIOTeam ? "bg-white/5 border border-white/10" : "bg-indigo-500/10 border border-indigo-500/20"}`}>
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${isIOTeam ? "bg-white/5 border border-white/10" : "bg-violet-500/10 border border-violet-500/20"}`}>
               {isIOTeam
                 ? <span className="text-xl">⚔️</span>
-                : <Users className="w-6 h-6 text-indigo-400" />}
+                : <Users className="w-6 h-6 text-violet-400" />}
             </div>
           )}
           <div>
@@ -237,7 +237,7 @@ export default async function TeamPage() {
       {/* Your rank cards */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-[#111318] border border-[#1e2130] rounded-xl p-4">
-          <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest mb-2">
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-2">
             {isIOTeam ? "Weekly rank" : `Your rank · ${currentMonthLabel()}`}
           </p>
           {(isIOTeam ? myWeeklyRank : myMonthlyRank) > 0 ? (
@@ -255,7 +255,7 @@ export default async function TeamPage() {
           )}
         </div>
         <div className="bg-[#111318] border border-[#1e2130] rounded-xl p-4">
-          <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest mb-2">
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-2">
             {isIOTeam ? "Monthly rank" : "Your rank · All Time"}
           </p>
           {(isIOTeam ? myMonthlyRank : myAllTimeRank) > 0 ? (
@@ -311,7 +311,7 @@ export default async function TeamPage() {
         <div className="space-y-4">
           <LeaderboardSection
             title={`This Month · ${currentMonthLabel()}`}
-            accentClass="bg-indigo-500 shadow-[0_2px_14px_2px_rgba(99,102,241,0.3)]"
+            accentClass="bg-violet-500 shadow-[0_2px_14px_2px_rgba(139,92,246,0.3)]"
           >
             {monthlyBoard.length === 0 ? (
               <p className="text-sm text-[#374151] py-4 text-center">No logs yet for this period.</p>

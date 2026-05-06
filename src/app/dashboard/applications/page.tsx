@@ -6,7 +6,7 @@ import { FileText, Briefcase, CheckCircle2, Eye, X, Clock, ChevronRight } from "
 
 const STATUS_CONFIG = {
   submitted: { label: "Submitted", cls: "text-[#6b7280] bg-white/[0.04] border-[#1e2130]" },
-  viewed:    { label: "Viewed",    cls: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20" },
+  viewed:    { label: "Viewed",    cls: "text-violet-400 bg-violet-500/10 border-violet-500/20" },
   interview: { label: "Interview", cls: "text-amber-400 bg-amber-500/10 border-amber-500/20" },
   accepted:  { label: "Accepted",  cls: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
   declined:  { label: "Declined",  cls: "text-rose-400 bg-rose-500/10 border-rose-500/20" },
@@ -36,25 +36,27 @@ export default async function ApplicationsPage() {
     <div className="px-4 sm:px-8 py-8 max-w-3xl">
       {/* Header */}
       <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center justify-center">
-          <FileText className="w-5 h-5 text-indigo-400" />
+        <div className="w-10 h-10 bg-violet-500/10 border border-violet-500/20 rounded-xl flex items-center justify-center">
+          <FileText className="w-5 h-5 text-violet-400" />
         </div>
         <div>
-          <h1 className="text-xl font-extrabold text-[#f0f2f8] tracking-tight">My Applications</h1>
-          <p className="text-sm text-[#4b5563] mt-0.5">{applications.length} application{applications.length !== 1 ? "s" : ""}</p>
+          <h1 className="text-2xl font-extrabold text-[#f0f2f8] tracking-tight">My Applications</h1>
+          <p className="text-sm text-zinc-500 mt-0.5">{applications.length} application{applications.length !== 1 ? "s" : ""}</p>
         </div>
       </div>
 
       {applications.length === 0 ? (
-        <div className="bg-[#0f1117] border border-[#1e2130] rounded-2xl py-20 text-center">
-          <Briefcase className="w-10 h-10 text-[#1e2130] mx-auto mb-4" />
-          <p className="text-sm font-semibold text-[#374151]">No applications yet</p>
-          <p className="text-xs text-[#2d3147] mt-1 mb-5">Browse the offer board and apply to roles you qualify for.</p>
+        <div className="bg-[#111318] border border-dashed border-[#1e2130] rounded-xl py-16 text-center shadow-lg shadow-black/20">
+          <div className="w-12 h-12 bg-violet-500/10 border border-violet-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <Briefcase className="w-6 h-6 text-violet-400" />
+          </div>
+          <p className="text-sm font-semibold text-zinc-200 mb-1">No applications yet</p>
+          <p className="text-sm text-zinc-500 mb-5 max-w-xs mx-auto">Browse the offer board and apply to roles you qualify for.</p>
           <Link
             href="/offers"
-            className="inline-flex items-center gap-2 text-xs font-semibold text-indigo-400 hover:text-indigo-300 border border-indigo-500/20 hover:border-indigo-400/40 px-4 py-2 rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-medium bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-lg transition-colors duration-150"
           >
-            <Briefcase className="w-3.5 h-3.5" /> Browse Offer Board
+            <Briefcase className="w-4 h-4" /> Browse Offer Board
           </Link>
         </div>
       ) : (
@@ -98,7 +100,7 @@ export default async function ApplicationsPage() {
       )}
 
       <div className="mt-6">
-        <Link href="/offers" className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#4b5563] hover:text-indigo-400 transition-colors">
+        <Link href="/offers" className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-violet-400 transition-colors duration-150">
           <ChevronRight className="w-3.5 h-3.5 rotate-180" /> Back to Offer Board
         </Link>
       </div>

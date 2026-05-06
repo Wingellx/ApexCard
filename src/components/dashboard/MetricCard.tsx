@@ -57,7 +57,7 @@ export default function MetricCard({
       <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest mb-1.5">
         {label}
       </p>
-      <p className="text-3xl font-extrabold text-[#f0f2f8] tracking-tight leading-none">
+      <p className="text-3xl font-extrabold text-[#f0f2f8] tracking-tight leading-none tabular-nums">
         {value}
       </p>
       {subvalue && (

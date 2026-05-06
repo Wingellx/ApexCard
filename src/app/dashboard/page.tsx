@@ -180,7 +180,7 @@ export default async function DashboardPage() {
         </div>
         <Link
           href="/dashboard/log"
-          className="inline-flex items-center gap-2 bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors shadow-lg shadow-indigo-500/20 shrink-0"
+          className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors duration-150 shadow-lg shadow-violet-600/20 shrink-0"
         >
           <Plus className="w-4 h-4" /> Log Today
         </Link>
@@ -206,7 +206,7 @@ export default async function DashboardPage() {
       {/* Performance section */}
       {hasData && (
         <div className="animate-in mb-6" style={{ animationDelay: "560ms" }}>
-          <p className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-widest mb-3">Performance</p>
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-3">Performance</p>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <WeeklySummary thisWeekLogs={thisWeekLogs as Parameters<typeof WeeklySummary>[0]["thisWeekLogs"]} lastWeekLogs={lastWeekLogs as Parameters<typeof WeeklySummary>[0]["lastWeekLogs"]} />
             <MonthlySummaryCard thisMonthLogs={rows as Parameters<typeof MonthlySummaryCard>[0]["thisMonthLogs"]} lastMonthLogs={lastMonthLogs as Parameters<typeof MonthlySummaryCard>[0]["lastMonthLogs"]} goals={goals} monthLabel={monthLabel()} />
@@ -234,7 +234,7 @@ export default async function DashboardPage() {
 
       {/* Pace banner */}
       {hasData && cashTarget > 0 && (
-        <div className="bg-[#111318] border border-indigo-500/20 rounded-xl px-5 py-4 flex items-center justify-between">
+        <div className="bg-[#111318] border border-violet-500/20 rounded-xl px-5 py-4 flex items-center justify-between shadow-lg shadow-black/20">
           <div className="flex items-center gap-3">
             <div className={`w-2 h-2 rounded-full animate-pulse ${cashPct >= 100 ? "bg-emerald-400" : cashPct >= 70 ? "bg-amber-400" : "bg-rose-400"}`} />
             {cashPct >= 100 ? (
@@ -249,7 +249,7 @@ export default async function DashboardPage() {
               </p>
             )}
           </div>
-          <Link href="/dashboard/goals" className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold whitespace-nowrap ml-6 transition-colors">
+          <Link href="/dashboard/goals" className="text-xs text-violet-400 hover:text-violet-300 font-semibold whitespace-nowrap ml-6 transition-colors duration-150">
             Edit goals →
           </Link>
         </div>
@@ -257,9 +257,9 @@ export default async function DashboardPage() {
 
       {/* No goals nudge */}
       {hasData && !goals && (
-        <div className="bg-[#111318] border border-dashed border-[#1e2130] rounded-xl px-5 py-4 flex items-center justify-between">
-          <p className="text-sm text-[#6b7280]">You have call data but no goals set for {monthLabel()}.</p>
-          <Link href="/dashboard/goals" className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold ml-6 transition-colors">
+        <div className="bg-[#111318] border border-dashed border-[#1e2130] rounded-xl px-5 py-4 flex items-center justify-between shadow-lg shadow-black/20">
+          <p className="text-sm text-zinc-500">You have call data but no goals set for {monthLabel()}.</p>
+          <Link href="/dashboard/goals" className="text-xs text-violet-400 hover:text-violet-300 font-semibold ml-6 transition-colors duration-150">
             Set goals →
           </Link>
         </div>
