@@ -21,21 +21,64 @@ async function requireAdmin() {
 
 // ── Prospects ───────────────────────────────────────────────
 
+const PIPELINE_STAGES: Record<string, string> = {
+  "Replied":    "Replied",
+  "Positive":   "Replied",
+  "Call Booked":"Call Booked",
+};
+
+async function maybeCreatePipelineCard(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
+  prospectId: string,
+  prospectName: string,
+  replyStatus: string,
+  userId: string,
+  existingClientId: string | null
+) {
+  const stage = PIPELINE_STAGES[replyStatus];
+  if (!stage || existingClientId) return; // not a reply, or already has a card
+
+  const { data: newClient } = await supabase
+    .from("ascendry_clients")
+    .insert({ name: prospectName, stage, stage_order: 0, created_by: userId })
+    .select("id")
+    .single();
+
+  if (newClient) {
+    await supabase
+      .from("ascendry_prospects")
+      .update({ pipeline_client_id: newClient.id })
+      .eq("id", prospectId);
+  }
+}
+
 export async function addProspect(formData: FormData) {
   const { user, supabase } = await requireAdmin();
-  const { error } = await supabase.from("ascendry_prospects").insert({
-    prospect_name:    formData.get("prospect_name") as string,
-    instagram_handle: (formData.get("instagram_handle") as string) || null,
-    date_messaged:    formData.get("date_messaged") as string,
-    template_used:    (formData.get("template_used") as string) || null,
-    reply_status:     (formData.get("reply_status") as string) || "No Reply",
-    call_booked:      formData.get("call_booked") === "true",
-    notes:            (formData.get("notes") as string) || null,
-    followers_k:      formData.get("followers_k") ? Number(formData.get("followers_k")) : null,
-    created_by:       user.id,
-  });
+  const replyStatus = (formData.get("reply_status") as string) || "No Reply";
+  const prospectName = formData.get("prospect_name") as string;
+
+  const { data: prospect, error } = await supabase
+    .from("ascendry_prospects")
+    .insert({
+      prospect_name:    prospectName,
+      instagram_handle: (formData.get("instagram_handle") as string) || null,
+      date_messaged:    formData.get("date_messaged") as string,
+      template_used:    (formData.get("template_used") as string) || null,
+      reply_status:     replyStatus,
+      call_booked:      formData.get("call_booked") === "true",
+      notes:            (formData.get("notes") as string) || null,
+      followers_k:      formData.get("followers_k") ? Number(formData.get("followers_k")) : null,
+      created_by:       user.id,
+    })
+    .select("id")
+    .single();
+
   if (error) throw error;
+
+  await maybeCreatePipelineCard(supabase, prospect.id, prospectName, replyStatus, user.id, null);
+
   revalidatePath("/ascendry/outreach");
+  revalidatePath("/ascendry/pipeline");
 }
 
 export async function updateProspect(id: string, data: {
@@ -46,14 +89,36 @@ export async function updateProspect(id: string, data: {
   reply_status?: string;
   call_booked?: boolean;
   notes?: string | null;
+  followers_k?: number | null;
 }) {
-  const { supabase } = await requireAdmin();
+  const { user, supabase } = await requireAdmin();
+
+  // Fetch current prospect to check if pipeline card already exists
+  if (data.reply_status && PIPELINE_STAGES[data.reply_status]) {
+    const { data: current } = await supabase
+      .from("ascendry_prospects")
+      .select("prospect_name, pipeline_client_id")
+      .eq("id", id)
+      .single();
+
+    if (current) {
+      await maybeCreatePipelineCard(
+        supabase, id,
+        data.prospect_name ?? current.prospect_name,
+        data.reply_status,
+        user.id,
+        current.pipeline_client_id
+      );
+    }
+  }
+
   const { error } = await supabase
     .from("ascendry_prospects")
     .update({ ...data, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw error;
   revalidatePath("/ascendry/outreach");
+  revalidatePath("/ascendry/pipeline");
   revalidatePath("/ascendry/analysis");
 }
 

@@ -18,6 +18,7 @@ export interface Prospect {
   call_booked: boolean;
   notes: string | null;
   followers_k: number | null;
+  pipeline_client_id: string | null;
   created_at: string;
 }
 

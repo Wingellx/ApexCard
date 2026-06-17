@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useTransition } from "react";
-import { Plus, Trash2, Pencil, X, Check, TrendingUp, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
+import { Plus, Trash2, Pencil, X, Check, TrendingUp, ChevronDown, ChevronUp, BookOpen, Bell } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Card, CardHeader, CardBody, CardTitle } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -157,6 +157,96 @@ function TemplateManager({ templates: initial }: { templates: AscendryTemplate[]
   );
 }
 
+// ── Follow-up alert ──────────────────────────────────────────
+
+const FOLLOW_UP_DAYS = 2;
+
+function daysSince(dateStr: string): number {
+  const sent = new Date(dateStr);
+  const now = new Date();
+  return Math.floor((now.getTime() - sent.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function FollowUpAlert({
+  prospects,
+  onUpdateStatus,
+}: {
+  prospects: Prospect[];
+  onUpdateStatus: (id: string, status: Prospect["reply_status"]) => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+
+  const overdue = useMemo(
+    () =>
+      prospects
+        .filter(p => p.reply_status === "No Reply" && daysSince(p.date_messaged) >= FOLLOW_UP_DAYS)
+        .sort((a, b) => a.date_messaged.localeCompare(b.date_messaged)),
+    [prospects]
+  );
+
+  if (overdue.length === 0) return null;
+
+  return (
+    <div className="border border-amber-500/30 bg-amber-500/5 rounded-xl overflow-hidden">
+      <button
+        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-amber-500/10 transition-colors"
+        onClick={() => setExpanded(v => !v)}
+      >
+        <div className="flex items-center gap-2.5">
+          <Bell size={14} className="text-amber-400" />
+          <span className="text-sm font-semibold text-amber-300">Follow Up Needed</span>
+          <span className="bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+            {overdue.length}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-amber-500/70">No reply after {FOLLOW_UP_DAYS}+ days</span>
+          {expanded ? <ChevronUp size={14} className="text-amber-500" /> : <ChevronDown size={14} className="text-amber-500" />}
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-amber-500/20 divide-y divide-amber-500/10">
+          {overdue.map(p => {
+            const days = daysSince(p.date_messaged);
+            return (
+              <div key={p.id} className="flex items-center justify-between px-5 py-3 gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
+                    days >= 5 ? "bg-red-500/20 text-red-400" : "bg-amber-500/20 text-amber-400"
+                  }`}>
+                    {days}d ago
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-zinc-100 truncate">{p.prospect_name}</p>
+                    <p className="text-xs text-zinc-500 truncate">
+                      {p.instagram_handle ?? ""}
+                      {p.followers_k != null ? ` · ${p.followers_k}K` : ""}
+                      {p.template_used ? ` · Template ${p.template_used}` : ""}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {(["Replied", "Positive", "Call Booked"] as Prospect["reply_status"][]).map(status => (
+                    <button
+                      key={status}
+                      onClick={() => onUpdateStatus(p.id, status)}
+                      className="text-xs px-2.5 py-1 rounded-lg border transition-colors whitespace-nowrap
+                        border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 hover:bg-zinc-800"
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ───────────────────────────────────────────
 
 export default function OutreachTracker({
@@ -248,6 +338,7 @@ export default function OutreachTracker({
       instagram_handle: form.instagram_handle || null,
       notes: form.notes || null,
       followers_k: form.followers_k ? Number(form.followers_k) : null,
+      pipeline_client_id: null,
     };
     optimisticAdd(temp);
     setShowAdd(false);
@@ -269,6 +360,15 @@ export default function OutreachTracker({
     optimisticDelete(id);
     startTransition(async () => {
       try { await deleteProspect(id); } catch {}
+    });
+  }
+
+  async function handleUpdateStatus(id: string, reply_status: Prospect["reply_status"]) {
+    optimisticUpdate(id, { reply_status, call_booked: reply_status === "Call Booked" });
+    startTransition(async () => {
+      try {
+        await updateProspect(id, { reply_status, call_booked: reply_status === "Call Booked" });
+      } catch {}
     });
   }
 
@@ -320,6 +420,9 @@ export default function OutreachTracker({
           </Card>
         ))}
       </div>
+
+      {/* Follow-up alert */}
+      <FollowUpAlert prospects={prospects} onUpdateStatus={handleUpdateStatus} />
 
       {/* Template performance chart */}
       <Card>
