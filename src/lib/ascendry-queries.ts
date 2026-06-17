@@ -41,6 +41,7 @@ export interface ClientMetric {
   show_rate_pct: number | null;
   close_rate_pct: number | null;
   revenue_generated: number;
+  logged_by: string | null;
   created_at: string;
 }
 
@@ -100,4 +101,28 @@ export async function getPayments(): Promise<Payment[]> {
     .select("*")
     .order("payment_date", { ascending: false });
   return (data as Payment[]) ?? [];
+}
+
+export interface AscendryTemplate {
+  letter: "A" | "B" | "C" | "D" | "E";
+  name: string;
+  body: string;
+}
+
+export async function getTemplates(): Promise<AscendryTemplate[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("ascendry_templates")
+    .select("*")
+    .order("letter");
+  return (data as AscendryTemplate[]) ?? [];
+}
+
+export async function getAscendryUsers(): Promise<AscendryUser[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("ascendry_users")
+    .select("*")
+    .order("display_name");
+  return (data as AscendryUser[]) ?? [];
 }

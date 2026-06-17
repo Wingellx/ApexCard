@@ -2,11 +2,13 @@
 
 import { useState, useMemo, useTransition } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { Plus, ChevronDown, ChevronUp, Trash2, Check } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2, Check } from "lucide-react";
 import { Card, CardHeader, CardBody, CardTitle } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { upsertClientMetric, deleteClientMetric } from "@/app/ascendry/actions";
-import type { AscendryClient, ClientMetric } from "@/lib/ascendry-queries";
+import type { AscendryClient, ClientMetric, AscendryUser } from "@/lib/ascendry-queries";
+
+const USER_COLORS = ["#7c3aed", "#10b981"] as const;
 
 function weekStart(offset = 0): string {
   const d = new Date();
@@ -17,11 +19,13 @@ function weekStart(offset = 0): string {
 }
 
 const WEEK_OPTIONS = [
-  { label: "This week",  value: weekStart(0) },
-  { label: "Last week",  value: weekStart(-1) },
+  { label: "This week",   value: weekStart(0)  },
+  { label: "Last week",   value: weekStart(-1) },
   { label: "2 weeks ago", value: weekStart(-2) },
   { label: "3 weeks ago", value: weekStart(-3) },
 ];
+
+type ViewMode = "combined" | string; // string = user_id
 
 interface MetricFormState {
   calls_booked: string;
@@ -41,49 +45,104 @@ const DEFAULT_METRIC: MetricFormState = {
   week_starting: weekStart(0),
 };
 
+function combinedMetrics(metrics: ClientMetric[]): ClientMetric {
+  return {
+    id: "combined",
+    client_id: metrics[0]?.client_id ?? "",
+    week_starting: metrics[0]?.week_starting ?? "",
+    calls_booked: metrics.reduce((s, m) => s + m.calls_booked, 0),
+    calls_taken: metrics.reduce((s, m) => s + m.calls_taken, 0),
+    show_rate_pct: null,
+    close_rate_pct: null,
+    revenue_generated: metrics.reduce((s, m) => s + m.revenue_generated, 0),
+    logged_by: null,
+    created_at: "",
+  } as ClientMetric;
+}
+
 interface ClientPanelProps {
   client: AscendryClient;
   metrics: ClientMetric[];
   isAdmin: boolean;
-  onSave: (data: { client_id: string; week_starting: string; calls_booked: number; calls_taken: number; show_rate_pct: number | null; close_rate_pct: number | null; revenue_generated: number }) => void;
+  currentUserId: string;
+  ascendryUsers: AscendryUser[];
+  onSave: (data: Parameters<typeof upsertClientMetric>[0]) => void;
   onDelete: (id: string) => void;
 }
 
-function ClientPanel({ client, metrics, isAdmin, onSave, onDelete }: ClientPanelProps) {
+function ClientPanel({ client, metrics, isAdmin, currentUserId, ascendryUsers, onSave, onDelete }: ClientPanelProps) {
   const [expanded, setExpanded] = useState(false);
   const [form, setForm] = useState<MetricFormState>(DEFAULT_METRIC);
+  const [view, setView] = useState<ViewMode>("combined");
   const [isPending, startTransition] = useTransition();
 
+  const userMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const u of ascendryUsers) m[u.user_id] = u.display_name;
+    return m;
+  }, [ascendryUsers]);
+
   const clientMetrics = useMemo(
-    () => metrics
-      .filter(m => m.client_id === client.id)
-      .sort((a, b) => a.week_starting.localeCompare(b.week_starting)),
+    () => metrics.filter(m => m.client_id === client.id),
     [metrics, client.id]
   );
 
+  // Group by week, then by user within each week
+  const weekMap = useMemo(() => {
+    const map: Record<string, ClientMetric[]> = {};
+    for (const m of clientMetrics) {
+      if (!map[m.week_starting]) map[m.week_starting] = [];
+      map[m.week_starting].push(m);
+    }
+    return map;
+  }, [clientMetrics]);
+
+  const sortedWeeks = useMemo(
+    () => Object.keys(weekMap).sort((a, b) => a.localeCompare(b)),
+    [weekMap]
+  );
+
+  // Filtered metrics by view
+  const filteredMetrics = useMemo(() => {
+    if (view === "combined") return clientMetrics;
+    return clientMetrics.filter(m => m.logged_by === view);
+  }, [clientMetrics, view]);
+
+  // Totals for the current view
   const totals = useMemo(() => ({
-    calls_booked: clientMetrics.reduce((s, m) => s + m.calls_booked, 0),
-    calls_taken: clientMetrics.reduce((s, m) => s + m.calls_taken, 0),
-    revenue: clientMetrics.reduce((s, m) => s + m.revenue_generated, 0),
-  }), [clientMetrics]);
+    calls_booked: filteredMetrics.reduce((s, m) => s + m.calls_booked, 0),
+    calls_taken: filteredMetrics.reduce((s, m) => s + m.calls_taken, 0),
+    revenue: filteredMetrics.reduce((s, m) => s + m.revenue_generated, 0),
+  }), [filteredMetrics]);
 
-  const avgShowRate = useMemo(() => {
-    const rated = clientMetrics.filter(m => m.show_rate_pct != null);
-    return rated.length > 0 ? (rated.reduce((s, m) => s + (m.show_rate_pct ?? 0), 0) / rated.length) : null;
-  }, [clientMetrics]);
+  // Per-user totals for the summary strip
+  const perUserTotals = useMemo(() => {
+    return ascendryUsers.map(u => {
+      const userMetrics = clientMetrics.filter(m => m.logged_by === u.user_id);
+      return {
+        user_id: u.user_id,
+        name: u.display_name,
+        calls_taken: userMetrics.reduce((s, m) => s + m.calls_taken, 0),
+        revenue: userMetrics.reduce((s, m) => s + m.revenue_generated, 0),
+        weeks: userMetrics.length,
+      };
+    });
+  }, [clientMetrics, ascendryUsers]);
 
-  const avgCloseRate = useMemo(() => {
-    const rated = clientMetrics.filter(m => m.close_rate_pct != null);
-    return rated.length > 0 ? (rated.reduce((s, m) => s + (m.close_rate_pct ?? 0), 0) / rated.length) : null;
-  }, [clientMetrics]);
-
-  const chartData = clientMetrics.map(m => ({
-    week: m.week_starting.slice(5), // MM-DD
-    revenue: m.revenue_generated,
-    calls_taken: m.calls_taken,
-    show_rate: m.show_rate_pct ?? 0,
-    close_rate: m.close_rate_pct ?? 0,
-  }));
+  // Chart data — one point per week, one series per user + combined
+  const chartData = useMemo(() => {
+    return sortedWeeks.map(ws => {
+      const weekMetrics = weekMap[ws];
+      const point: Record<string, number | string> = { week: ws.slice(5) };
+      for (const u of ascendryUsers) {
+        const um = weekMetrics.find(m => m.logged_by === u.user_id);
+        point[`revenue_${u.user_id}`] = um?.revenue_generated ?? 0;
+        point[`close_${u.user_id}`] = um?.close_rate_pct ?? 0;
+      }
+      point["revenue_combined"] = weekMetrics.reduce((s, m) => s + m.revenue_generated, 0);
+      return point;
+    });
+  }, [sortedWeeks, weekMap, ascendryUsers]);
 
   function handleSubmit() {
     onSave({
@@ -100,10 +159,7 @@ function ClientPanel({ client, metrics, isAdmin, onSave, onDelete }: ClientPanel
 
   return (
     <Card>
-      <button
-        className="w-full"
-        onClick={() => setExpanded(v => !v)}
-      >
+      <button className="w-full" onClick={() => setExpanded(v => !v)}>
         <CardHeader className="cursor-pointer hover:bg-zinc-800/20 transition-colors rounded-t-xl">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-violet-600/20 flex items-center justify-center">
@@ -112,20 +168,17 @@ function ClientPanel({ client, metrics, isAdmin, onSave, onDelete }: ClientPanel
             <div className="text-left">
               <p className="text-sm font-semibold text-zinc-100">{client.name}</p>
               <p className="text-xs text-zinc-500 mt-0.5">
-                {clientMetrics.length} week{clientMetrics.length !== 1 ? "s" : ""} · £{totals.revenue.toLocaleString("en-GB")} total
+                {sortedWeeks.length} week{sortedWeeks.length !== 1 ? "s" : ""} · £{clientMetrics.reduce((s, m) => s + m.revenue_generated, 0).toLocaleString("en-GB")} combined
               </p>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="hidden sm:flex gap-4 text-right">
-              {[
-                { label: "Calls Taken",  value: totals.calls_taken.toString() },
-                { label: "Avg Show",     value: avgShowRate != null ? `${avgShowRate.toFixed(0)}%` : "—" },
-                { label: "Avg Close",    value: avgCloseRate != null ? `${avgCloseRate.toFixed(0)}%` : "—" },
-              ].map(stat => (
-                <div key={stat.label}>
-                  <p className="text-xs text-zinc-500">{stat.label}</p>
-                  <p className="text-sm font-semibold text-zinc-100">{stat.value}</p>
+            {/* Per-user mini badges */}
+            <div className="hidden sm:flex gap-3">
+              {perUserTotals.map((u, i) => (
+                <div key={u.user_id} className="text-right">
+                  <p className="text-xs font-medium" style={{ color: USER_COLORS[i % USER_COLORS.length] }}>{u.name}</p>
+                  <p className="text-xs text-zinc-400">£{u.revenue.toLocaleString("en-GB")}</p>
                 </div>
               ))}
             </div>
@@ -136,31 +189,76 @@ function ClientPanel({ client, metrics, isAdmin, onSave, onDelete }: ClientPanel
 
       {expanded && (
         <CardBody className="space-y-6">
-          {/* Log new week */}
+          {/* View toggle */}
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { id: "combined", label: "Combined" },
+              ...ascendryUsers.map(u => ({ id: u.user_id, label: u.display_name })),
+            ].map((opt, i) => (
+              <button
+                key={opt.id}
+                onClick={() => setView(opt.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  view === opt.id
+                    ? "text-white"
+                    : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+                }`}
+                style={view === opt.id ? {
+                  background: opt.id === "combined" ? "#7c3aed" : USER_COLORS[(i - 1) % USER_COLORS.length],
+                } : undefined}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Accountability strip — always visible */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {perUserTotals.map((u, i) => (
+              <div
+                key={u.user_id}
+                className="bg-[#0a0b0f] border border-[#1e2130] rounded-xl p-3"
+                style={{ borderColor: `${USER_COLORS[i % USER_COLORS.length]}30` }}
+              >
+                <p className="text-xs font-medium mb-2" style={{ color: USER_COLORS[i % USER_COLORS.length] }}>
+                  {u.name}
+                </p>
+                <p className="text-lg font-bold text-white">£{u.revenue.toLocaleString("en-GB")}</p>
+                <p className="text-xs text-zinc-500 mt-0.5">{u.calls_taken} calls · {u.weeks} weeks logged</p>
+              </div>
+            ))}
+            <div className="bg-[#0a0b0f] border border-violet-600/20 rounded-xl p-3 sm:col-span-2">
+              <p className="text-xs font-medium text-violet-400 mb-2">Combined</p>
+              <p className="text-lg font-bold text-white">
+                £{clientMetrics.reduce((s, m) => s + m.revenue_generated, 0).toLocaleString("en-GB")}
+              </p>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                {clientMetrics.reduce((s, m) => s + m.calls_taken, 0)} calls total
+              </p>
+            </div>
+          </div>
+
+          {/* Log weekly data */}
           <div>
-            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Log Weekly Data</p>
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Log Your Week</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               <div>
                 <label className="block text-xs text-zinc-500 mb-1">Week</label>
-                <select
-                  className="input-base w-full text-xs"
-                  value={form.week_starting}
-                  onChange={e => setForm(f => ({ ...f, week_starting: e.target.value }))}
-                >
+                <select className="input-base w-full text-xs" value={form.week_starting} onChange={e => setForm(f => ({ ...f, week_starting: e.target.value }))}>
                   {WEEK_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               {[
-                { key: "calls_booked",      label: "Calls Booked",  type: "number" },
-                { key: "calls_taken",       label: "Calls Taken",   type: "number" },
-                { key: "show_rate_pct",     label: "Show Rate %",   type: "number" },
-                { key: "close_rate_pct",    label: "Close Rate %",  type: "number" },
-                { key: "revenue_generated", label: "Revenue £",     type: "number" },
+                { key: "calls_booked",      label: "Calls Booked" },
+                { key: "calls_taken",       label: "Calls Taken"  },
+                { key: "show_rate_pct",     label: "Show Rate %"  },
+                { key: "close_rate_pct",    label: "Close Rate %" },
+                { key: "revenue_generated", label: "Revenue £"    },
               ].map(f => (
                 <div key={f.key}>
                   <label className="block text-xs text-zinc-500 mb-1">{f.label}</label>
                   <input
-                    type={f.type}
+                    type="number"
                     min="0"
                     className="input-base w-full text-xs"
                     value={(form as unknown as Record<string, string>)[f.key]}
@@ -175,73 +273,108 @@ function ClientPanel({ client, metrics, isAdmin, onSave, onDelete }: ClientPanel
             </Button>
           </div>
 
-          {/* Performance chart */}
+          {/* Charts */}
           {chartData.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Performance Over Time</p>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-zinc-500 mb-2">Revenue (£)</p>
-                  <ResponsiveContainer width="100%" height={140}>
-                    <LineChart data={chartData}>
-                      <XAxis dataKey="week" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <Tooltip contentStyle={{ background: "#111318", border: "1px solid #1e2130", borderRadius: 8, fontSize: 11 }} />
-                      <Line type="monotone" dataKey="revenue" stroke="#7c3aed" strokeWidth={2} dot={{ fill: "#7c3aed", r: 3 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-                <div>
-                  <p className="text-xs text-zinc-500 mb-2">Show Rate & Close Rate (%)</p>
-                  <ResponsiveContainer width="100%" height={140}>
-                    <LineChart data={chartData}>
-                      <XAxis dataKey="week" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <YAxis unit="%" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} domain={[0, 100]} />
-                      <Tooltip contentStyle={{ background: "#111318", border: "1px solid #1e2130", borderRadius: 8, fontSize: 11 }} />
-                      <Legend wrapperStyle={{ fontSize: 10, color: "#71717a" }} />
-                      <Line type="monotone" dataKey="show_rate" name="Show Rate" stroke="#10b981" strokeWidth={2} dot={{ fill: "#10b981", r: 3 }} />
-                      <Line type="monotone" dataKey="close_rate" name="Close Rate" stroke="#f59e0b" strokeWidth={2} dot={{ fill: "#f59e0b", r: 3 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-zinc-500 mb-2">Revenue per week (£)</p>
+                <ResponsiveContainer width="100%" height={150}>
+                  <LineChart data={chartData}>
+                    <XAxis dataKey="week" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ background: "#111318", border: "1px solid #1e2130", borderRadius: 8, fontSize: 11 }} />
+                    <Legend wrapperStyle={{ fontSize: 10 }} />
+                    {ascendryUsers.map((u, i) => (
+                      <Line
+                        key={u.user_id}
+                        type="monotone"
+                        dataKey={`revenue_${u.user_id}`}
+                        name={u.display_name}
+                        stroke={USER_COLORS[i % USER_COLORS.length]}
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                      />
+                    ))}
+                    <Line type="monotone" dataKey="revenue_combined" name="Combined" stroke="#f59e0b" strokeWidth={2} strokeDasharray="4 2" dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div>
+                <p className="text-xs text-zinc-500 mb-2">Close Rate per week (%)</p>
+                <ResponsiveContainer width="100%" height={150}>
+                  <LineChart data={chartData}>
+                    <XAxis dataKey="week" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis unit="%" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} domain={[0, 100]} />
+                    <Tooltip contentStyle={{ background: "#111318", border: "1px solid #1e2130", borderRadius: 8, fontSize: 11 }} />
+                    <Legend wrapperStyle={{ fontSize: 10 }} />
+                    {ascendryUsers.map((u, i) => (
+                      <Line
+                        key={u.user_id}
+                        type="monotone"
+                        dataKey={`close_${u.user_id}`}
+                        name={u.display_name}
+                        stroke={USER_COLORS[i % USER_COLORS.length]}
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
             </div>
           )}
 
           {/* Weekly log table */}
-          {clientMetrics.length > 0 && (
+          {sortedWeeks.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Weekly Log</p>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-[#1e2130]">
-                      {["Week Starting", "Calls Booked", "Calls Taken", "Show Rate", "Close Rate", "Revenue", ""].map(h => (
+                      {["Week", "Who", "Calls Booked", "Calls Taken", "Show %", "Close %", "Revenue", ""].map(h => (
                         <th key={h} className="px-3 py-2 text-left text-zinc-500 font-medium whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {[...clientMetrics].reverse().map(m => (
-                      <tr key={m.id} className="border-b border-[#1e2130] hover:bg-zinc-800/20">
-                        <td className="px-3 py-2 text-zinc-300 font-medium">{m.week_starting}</td>
-                        <td className="px-3 py-2 text-zinc-400">{m.calls_booked}</td>
-                        <td className="px-3 py-2 text-zinc-400">{m.calls_taken}</td>
-                        <td className="px-3 py-2 text-zinc-400">{m.show_rate_pct != null ? `${m.show_rate_pct}%` : "—"}</td>
-                        <td className="px-3 py-2 text-zinc-400">{m.close_rate_pct != null ? `${m.close_rate_pct}%` : "—"}</td>
-                        <td className="px-3 py-2 text-emerald-400 font-medium">£{m.revenue_generated.toLocaleString("en-GB")}</td>
-                        <td className="px-3 py-2">
-                          {isAdmin && (
-                            <button
-                              onClick={() => onDelete(m.id)}
-                              className="text-zinc-600 hover:text-red-400 transition-colors"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {[...sortedWeeks].reverse().flatMap(ws => {
+                      const weekMetrics = weekMap[ws];
+                      const rows = view === "combined"
+                        ? weekMetrics
+                        : weekMetrics.filter(m => m.logged_by === view);
+
+                      return rows.map((m, idx) => (
+                        <tr key={m.id} className="border-b border-[#1e2130] hover:bg-zinc-800/20">
+                          <td className="px-3 py-2 text-zinc-300 font-medium">{idx === 0 ? ws : ""}</td>
+                          <td className="px-3 py-2">
+                            {m.logged_by && userMap[m.logged_by] ? (
+                              <span
+                                className="text-xs font-medium px-1.5 py-0.5 rounded"
+                                style={{
+                                  color: USER_COLORS[ascendryUsers.findIndex(u => u.user_id === m.logged_by) % USER_COLORS.length],
+                                  background: `${USER_COLORS[ascendryUsers.findIndex(u => u.user_id === m.logged_by) % USER_COLORS.length]}15`,
+                                }}
+                              >
+                                {userMap[m.logged_by]}
+                              </span>
+                            ) : "—"}
+                          </td>
+                          <td className="px-3 py-2 text-zinc-400">{m.calls_booked}</td>
+                          <td className="px-3 py-2 text-zinc-400">{m.calls_taken}</td>
+                          <td className="px-3 py-2 text-zinc-400">{m.show_rate_pct != null ? `${m.show_rate_pct}%` : "—"}</td>
+                          <td className="px-3 py-2 text-zinc-400">{m.close_rate_pct != null ? `${m.close_rate_pct}%` : "—"}</td>
+                          <td className="px-3 py-2 text-emerald-400 font-medium">£{m.revenue_generated.toLocaleString("en-GB")}</td>
+                          <td className="px-3 py-2">
+                            {isAdmin && (
+                              <button onClick={() => onDelete(m.id)} className="text-zinc-600 hover:text-red-400 transition-colors">
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ));
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -257,22 +390,30 @@ interface Props {
   clients: AscendryClient[];
   allMetrics: ClientMetric[];
   isAdmin: boolean;
+  currentUserId: string;
+  ascendryUsers: AscendryUser[];
 }
 
-export default function ClientMetricsDashboard({ clients, allMetrics, isAdmin }: Props) {
+export default function ClientMetricsDashboard({ clients, allMetrics, isAdmin, currentUserId, ascendryUsers }: Props) {
   const [metrics, setMetrics] = useState<ClientMetric[]>(allMetrics);
   const [isPending, startTransition] = useTransition();
 
   function handleSave(data: Parameters<typeof upsertClientMetric>[0]) {
-    // Optimistically update or insert
     setMetrics(prev => {
-      const existing = prev.findIndex(m => m.client_id === data.client_id && m.week_starting === data.week_starting);
+      const existing = prev.findIndex(
+        m => m.client_id === data.client_id && m.week_starting === data.week_starting && m.logged_by === currentUserId
+      );
       if (existing >= 0) {
         const updated = [...prev];
-        updated[existing] = { ...updated[existing], ...data };
+        updated[existing] = { ...updated[existing], ...data, logged_by: currentUserId };
         return updated;
       }
-      return [...prev, { id: crypto.randomUUID(), ...data, logged_by: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as ClientMetric];
+      return [...prev, {
+        id: crypto.randomUUID(),
+        ...data,
+        logged_by: currentUserId,
+        created_at: new Date().toISOString(),
+      } as ClientMetric];
     });
     startTransition(async () => {
       try { await upsertClientMetric(data); } catch {}
@@ -286,20 +427,17 @@ export default function ClientMetricsDashboard({ clients, allMetrics, isAdmin }:
     });
   }
 
-  // Overall totals across all clients
   const totalRevenue = metrics.reduce((s, m) => s + m.revenue_generated, 0);
   const totalCalls = metrics.reduce((s, m) => s + m.calls_taken, 0);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-white">Client Metrics</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">{clients.length} active client{clients.length !== 1 ? "s" : ""}</p>
-        </div>
+      <div>
+        <h1 className="text-xl font-semibold text-white">Client Metrics</h1>
+        <p className="text-sm text-zinc-500 mt-0.5">{clients.length} active client{clients.length !== 1 ? "s" : ""}</p>
       </div>
 
-      {/* Summary strip */}
+      {/* Overall summary */}
       <div className="grid grid-cols-2 gap-3">
         <Card className="px-5 py-4">
           <p className="text-xs text-zinc-500 mb-1">Total Revenue</p>
@@ -327,6 +465,8 @@ export default function ClientMetricsDashboard({ clients, allMetrics, isAdmin }:
               client={client}
               metrics={metrics}
               isAdmin={isAdmin}
+              currentUserId={currentUserId}
+              ascendryUsers={ascendryUsers}
               onSave={handleSave}
               onDelete={handleDelete}
             />

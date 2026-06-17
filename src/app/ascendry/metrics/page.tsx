@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getAscendryUser, getClients, getClientMetrics } from "@/lib/ascendry-queries";
+import { getAscendryUser, getClients, getClientMetrics, getAscendryUsers } from "@/lib/ascendry-queries";
 import ClientMetricsDashboard from "@/components/ascendry/ClientMetricsDashboard";
 
 export default async function MetricsPage() {
@@ -11,9 +11,10 @@ export default async function MetricsPage() {
   const ascendryUser = await getAscendryUser(user.id);
   if (!ascendryUser) redirect("/ascendry");
 
-  const [clients, metrics] = await Promise.all([
+  const [clients, metrics, ascendryUsers] = await Promise.all([
     getClients(),
     getClientMetrics(),
+    getAscendryUsers(),
   ]);
 
   const activeClients = clients.filter(c => c.stage === "Active Client" || c.stage === "60-Day Review");
@@ -24,6 +25,8 @@ export default async function MetricsPage() {
         clients={activeClients}
         allMetrics={metrics}
         isAdmin={ascendryUser.role === "admin"}
+        currentUserId={user.id}
+        ascendryUsers={ascendryUsers}
       />
     </div>
   );

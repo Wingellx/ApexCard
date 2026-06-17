@@ -134,10 +134,20 @@ export async function upsertClientMetric(data: {
     .from("ascendry_client_metrics")
     .upsert(
       { ...data, logged_by: user.id, updated_at: new Date().toISOString() },
-      { onConflict: "client_id,week_starting" }
+      { onConflict: "client_id,week_starting,logged_by" }
     );
   if (error) throw error;
   revalidatePath("/ascendry/metrics");
+}
+
+export async function upsertTemplate(letter: string, name: string, body: string) {
+  const { supabase } = await requireAdmin();
+  const { error } = await supabase
+    .from("ascendry_templates")
+    .upsert({ letter, name, body, updated_at: new Date().toISOString() }, { onConflict: "letter" });
+  if (error) throw error;
+  revalidatePath("/ascendry/outreach");
+  revalidatePath("/ascendry/analysis");
 }
 
 export async function deleteClientMetric(id: string) {
