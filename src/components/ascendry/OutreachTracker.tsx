@@ -296,9 +296,9 @@ export default function OutreachTracker({
     }
     return TEMPLATES.map(t => {
       const tpl = templateMap[t];
-      const label = tpl?.name ? `${t}: ${tpl.name}` : `Template ${t}`;
       return {
-        name: label,
+        name: tpl?.name ? `${t}: ${tpl.name}` : `Template ${t}`,
+        shortName: `T${t}`,
         letter: t,
         replyRate: byTemplate[t].sent > 0 ? Math.round((byTemplate[t].replied / byTemplate[t].sent) * 100) : 0,
         sent: byTemplate[t].sent,
@@ -438,7 +438,7 @@ export default function OutreachTracker({
         <CardBody>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={templateChartData} barSize={36}>
-              <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 10 }} axisLine={false} tickLine={false} interval={0} />
+              <XAxis dataKey="shortName" tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} interval={0} />
               <YAxis unit="%" tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 100]} />
               <Tooltip
                 contentStyle={{ background: "#111318", border: "1px solid #1e2130", borderRadius: 8, fontSize: 12 }}
@@ -446,8 +446,8 @@ export default function OutreachTracker({
                 formatter={(value) => [`${value}%`, "Reply Rate"]}
               />
               <Bar dataKey="replyRate" radius={[4, 4, 0, 0]}>
-                {templateChartData.map(entry => (
-                  <Cell key={entry.letter} fill={entry.letter === bestTemplate?.letter ? "#7c3aed" : "#3f3f46"} />
+                {templateChartData.map(t => (
+                  <Cell key={t.letter} fill={t.letter === bestTemplate?.letter ? "#7c3aed" : "#3f3f46"} />
                 ))}
               </Bar>
             </BarChart>
