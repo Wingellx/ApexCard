@@ -17,6 +17,7 @@ export interface Prospect {
   reply_status: "No Reply" | "Replied" | "Positive" | "Call Booked";
   call_booked: boolean;
   notes: string | null;
+  followers_k: number | null;
   created_at: string;
 }
 

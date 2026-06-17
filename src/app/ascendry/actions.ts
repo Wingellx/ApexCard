@@ -31,6 +31,7 @@ export async function addProspect(formData: FormData) {
     reply_status:     (formData.get("reply_status") as string) || "No Reply",
     call_booked:      formData.get("call_booked") === "true",
     notes:            (formData.get("notes") as string) || null,
+    followers_k:      formData.get("followers_k") ? Number(formData.get("followers_k")) : null,
     created_by:       user.id,
   });
   if (error) throw error;

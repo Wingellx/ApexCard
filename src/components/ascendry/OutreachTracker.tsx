@@ -28,6 +28,7 @@ interface AddFormState {
   reply_status: string;
   call_booked: boolean;
   notes: string;
+  followers_k: string;
 }
 
 const DEFAULT_FORM: AddFormState = {
@@ -38,6 +39,7 @@ const DEFAULT_FORM: AddFormState = {
   reply_status: "No Reply",
   call_booked: false,
   notes: "",
+  followers_k: "",
 };
 
 function today() {
@@ -245,6 +247,7 @@ export default function OutreachTracker({
       created_at: new Date().toISOString(),
       instagram_handle: form.instagram_handle || null,
       notes: form.notes || null,
+      followers_k: form.followers_k ? Number(form.followers_k) : null,
     };
     optimisticAdd(temp);
     setShowAdd(false);
@@ -374,6 +377,12 @@ export default function OutreachTracker({
               <Field label="Instagram Handle">
                 <input className="input-base" value={form.instagram_handle} onChange={e => setForm(f => ({ ...f, instagram_handle: e.target.value }))} placeholder="@handle" />
               </Field>
+              <Field label="Followers (K)">
+                <div className="relative">
+                  <input type="number" min="0" className="input-base pr-8" value={form.followers_k} onChange={e => setForm(f => ({ ...f, followers_k: e.target.value }))} placeholder="e.g. 25" />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 pointer-events-none">K</span>
+                </div>
+              </Field>
               <Field label="Date Messaged">
                 <input type="date" className="input-base" value={form.date_messaged} onChange={e => setForm(f => ({ ...f, date_messaged: e.target.value }))} />
               </Field>
@@ -435,7 +444,7 @@ export default function OutreachTracker({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#1e2130]">
-                {["Name", "Handle", "Date", "Template", "Status", "Call", "Notes", ""].map(h => (
+                {["Name", "Handle", "Followers", "Date", "Template", "Status", "Call", "Notes", ""].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -443,7 +452,7 @@ export default function OutreachTracker({
             <tbody>
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-zinc-500 text-sm">
+                  <td colSpan={9} className="px-4 py-10 text-center text-zinc-500 text-sm">
                     No prospects yet. Add your first one above.
                   </td>
                 </tr>
@@ -461,6 +470,16 @@ export default function OutreachTracker({
                       {isEditing ? (
                         <input className="input-base w-28" value={editState.instagram_handle ?? ""} onChange={e => setEditState(s => ({ ...s, instagram_handle: e.target.value || null }))} />
                       ) : (p.instagram_handle ?? "—")}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-400 whitespace-nowrap">
+                      {isEditing ? (
+                        <div className="relative w-20">
+                          <input type="number" min="0" className="input-base pr-6" value={editState.followers_k ?? ""} onChange={e => setEditState(s => ({ ...s, followers_k: e.target.value ? Number(e.target.value) : null }))} />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-zinc-500 pointer-events-none">K</span>
+                        </div>
+                      ) : p.followers_k != null ? (
+                        <span className="text-zinc-300 font-medium">{p.followers_k}K</span>
+                      ) : "—"}
                     </td>
                     <td className="px-4 py-3 text-zinc-400 whitespace-nowrap">
                       {isEditing ? (
