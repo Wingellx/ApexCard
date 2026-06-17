@@ -465,17 +465,19 @@ export default function OutreachTracker({
       {/* Template editor */}
       <TemplateManager templates={templates} />
 
-      {/* Add prospect form */}
+      {/* Add prospect modal */}
       {showAdd && (
-        <Card>
-          <CardHeader>
-            <CardTitle>New Prospect</CardTitle>
-            <button onClick={() => setShowAdd(false)} className="text-zinc-500 hover:text-zinc-300"><X size={16} /></button>
-          </CardHeader>
-          <CardBody>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Field label="Name *">
-                <input className="input-base" value={form.prospect_name} onChange={e => setForm(f => ({ ...f, prospect_name: e.target.value }))} placeholder="John Smith" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowAdd(false)} />
+          <div className="relative bg-[#111318] border border-[#1e2130] rounded-2xl w-full max-w-lg shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e2130]">
+              <h2 className="text-sm font-semibold text-white">New Prospect</h2>
+              <button onClick={() => setShowAdd(false)} className="text-zinc-500 hover:text-zinc-300"><X size={16} /></button>
+            </div>
+            <div className="px-6 py-5 grid grid-cols-2 gap-3">
+              <Field label="Name *" className="col-span-2">
+                <input autoFocus className="input-base" value={form.prospect_name} onChange={e => setForm(f => ({ ...f, prospect_name: e.target.value }))} placeholder="John Smith"
+                  onKeyDown={e => { if (e.key === "Enter") handleAdd(); }} />
               </Field>
               <Field label="Instagram Handle">
                 <input className="input-base" value={form.instagram_handle} onChange={e => setForm(f => ({ ...f, instagram_handle: e.target.value }))} placeholder="@handle" />
@@ -486,15 +488,13 @@ export default function OutreachTracker({
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 pointer-events-none">K</span>
                 </div>
               </Field>
-              <Field label="Date Messaged">
-                <input type="date" className="input-base" value={form.date_messaged} onChange={e => setForm(f => ({ ...f, date_messaged: e.target.value }))} />
-              </Field>
               <Field label="Template">
                 <select className="input-base" value={form.template_used} onChange={e => setForm(f => ({ ...f, template_used: e.target.value }))}>
-                  {TEMPLATES.map(t => (
-                    <option key={t} value={t}>{templateLabel(t)}</option>
-                  ))}
+                  {TEMPLATES.map(t => <option key={t} value={t}>{templateLabel(t)}</option>)}
                 </select>
+              </Field>
+              <Field label="Date Messaged">
+                <input type="date" className="input-base" value={form.date_messaged} onChange={e => setForm(f => ({ ...f, date_messaged: e.target.value }))} />
               </Field>
               <Field label="Reply Status">
                 <select className="input-base" value={form.reply_status} onChange={e => {
@@ -505,23 +505,23 @@ export default function OutreachTracker({
                 </select>
               </Field>
               <Field label="Call Booked">
-                <div className="flex items-center gap-3 h-9">
+                <div className="flex items-center h-9">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={form.call_booked} onChange={e => setForm(f => ({ ...f, call_booked: e.target.checked }))} className="w-4 h-4 rounded accent-violet-600" />
                     <span className="text-sm text-zinc-300">Yes</span>
                   </label>
                 </div>
               </Field>
-              <Field label="Notes" className="sm:col-span-2 lg:col-span-3">
-                <textarea className="input-base resize-none" rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional notes..." />
+              <Field label="Notes" className="col-span-2">
+                <textarea className="input-base resize-none" rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional..." />
               </Field>
             </div>
-            <div className="flex gap-3 mt-4">
-              <Button size="sm" onClick={handleAdd} loading={isPending}>Add</Button>
+            <div className="flex gap-3 px-6 pb-5">
+              <Button size="sm" onClick={handleAdd} loading={isPending}>Add Prospect</Button>
               <Button size="sm" variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
             </div>
-          </CardBody>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Filters */}
