@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
-import { Plus, Trash2, Pencil, X, Check, TrendingUp, ChevronDown, ChevronUp, BookOpen, Bell } from "lucide-react";
+import { useState, useMemo, useTransition, useRef, useEffect } from "react";
+import {
+  Plus, Trash2, Pencil, X, Check, TrendingUp,
+  ChevronDown, ChevronUp, BookOpen, Bell, Zap, RotateCcw,
+} from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Card, CardHeader, CardBody, CardTitle } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -10,6 +13,7 @@ import type { Prospect, AscendryTemplate } from "@/lib/ascendry-queries";
 
 const TEMPLATES = ["A", "B", "C", "D", "E"] as const;
 const REPLY_STATUSES = ["No Reply", "Replied", "Positive", "Call Booked"] as const;
+const REPLY_CYCLE = REPLY_STATUSES as readonly Prospect["reply_status"][];
 
 const STATUS_COLORS: Record<string, string> = {
   "No Reply":    "bg-zinc-700 text-zinc-300",
@@ -17,6 +21,22 @@ const STATUS_COLORS: Record<string, string> = {
   "Positive":    "bg-emerald-600/20 text-emerald-300 border border-emerald-600/30",
   "Call Booked": "bg-violet-600/20 text-violet-300 border border-violet-600/30",
 };
+
+// Next status in the cycle
+function nextStatus(cur: Prospect["reply_status"]): Prospect["reply_status"] {
+  const idx = REPLY_CYCLE.indexOf(cur);
+  return REPLY_CYCLE[(idx + 1) % REPLY_CYCLE.length];
+}
+
+// Default template by weekday: Mon=A Tue=B Wed=C Thu=D Fri/Sat/Sun=E
+function defaultTemplateForToday(): string {
+  const d = new Date().getDay(); // 0=Sun,1=Mon...6=Sat
+  return (["E", "A", "B", "C", "D", "E", "E"] as const)[d];
+}
+
+function today() {
+  return new Date().toISOString().split("T")[0];
+}
 
 type EditState = Partial<Omit<Prospect, "id" | "created_at">>;
 
@@ -34,7 +54,7 @@ interface AddFormState {
 const DEFAULT_FORM: AddFormState = {
   prospect_name: "",
   instagram_handle: "",
-  date_messaged: new Date().toISOString().split("T")[0],
+  date_messaged: today(),
   template_used: "A",
   reply_status: "No Reply",
   call_booked: false,
@@ -42,8 +62,84 @@ const DEFAULT_FORM: AddFormState = {
   followers_k: "",
 };
 
-function today() {
-  return new Date().toISOString().split("T")[0];
+// ── Quick Log Bar ─────────────────────────────────────────────
+
+interface QuickLogBarProps {
+  todayCount: number;
+  onLog: (name: string, template: string) => void;
+  isPending: boolean;
+}
+
+function QuickLogBar({ todayCount, onLog, isPending }: QuickLogBarProps) {
+  const [name, setName] = useState("");
+  const [template, setTemplate] = useState<string>(defaultTemplateForToday());
+  const [toastVisible, setToastVisible] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  function handleLog() {
+    if (!name.trim()) return;
+    onLog(name.trim(), template);
+    setName("");
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 800);
+    // Re-focus after state flush
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }
+
+  return (
+    <>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 py-3">
+        {/* Name input */}
+        <input
+          ref={inputRef}
+          className="input-base flex-1 text-sm h-11 sm:h-9"
+          placeholder="Name or @handle"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") handleLog(); }}
+        />
+
+        {/* Template selector */}
+        <div className="flex gap-1.5 shrink-0">
+          {TEMPLATES.map(t => (
+            <button
+              key={t}
+              onClick={() => setTemplate(t)}
+              className={`w-11 h-11 sm:w-8 sm:h-9 rounded-lg text-xs font-bold border transition-colors ${
+                template === t
+                  ? "bg-violet-600 border-violet-500 text-white shadow-md shadow-violet-600/20"
+                  : "border-[#1e2130] text-zinc-400 hover:border-zinc-600 hover:text-zinc-200 bg-[#111318]"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {/* Log button + counter */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={handleLog}
+            disabled={!name.trim() || isPending}
+            className="flex items-center gap-1.5 h-11 sm:h-9 px-4 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-md shadow-violet-600/20 whitespace-nowrap"
+          >
+            <Zap size={13} />
+            Log Sent
+          </button>
+
+          <span className={`text-sm font-semibold transition-colors whitespace-nowrap ${
+            toastVisible ? "text-emerald-400" : "text-zinc-400"
+          }`}>
+            {toastVisible ? `${todayCount} ✓` : `${todayCount} today`}
+          </span>
+        </div>
+      </div>
+    </>
+  );
 }
 
 // ── Template Manager ─────────────────────────────────────────
@@ -264,6 +360,7 @@ export default function OutreachTracker({
   const [isPending, startTransition] = useTransition();
   const [filterTemplate, setFilterTemplate] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterNeedsUpdate, setFilterNeedsUpdate] = useState(false);
 
   const templateMap = useMemo(() => {
     const map: Record<string, AscendryTemplate> = {};
@@ -271,8 +368,9 @@ export default function OutreachTracker({
     return map;
   }, [templates]);
 
+  const todayStr = today();
+
   const stats = useMemo(() => {
-    const todayStr = today();
     const sentToday = prospects.filter(p => p.date_messaged === todayStr).length;
     const total = prospects.length;
     const replied = prospects.filter(p => p.reply_status !== "No Reply").length;
@@ -284,7 +382,7 @@ export default function OutreachTracker({
       positiveRate: total > 0 ? Math.round((positive / total) * 100) : 0,
       callsBooked,
     };
-  }, [prospects]);
+  }, [prospects, todayStr]);
 
   const templateChartData = useMemo(() => {
     const byTemplate: Record<string, { sent: number; replied: number }> = {};
@@ -315,15 +413,43 @@ export default function OutreachTracker({
     return prospects.filter(p => {
       if (filterTemplate !== "all" && p.template_used !== filterTemplate) return false;
       if (filterStatus !== "all" && p.reply_status !== filterStatus) return false;
+      if (filterNeedsUpdate && p.reply_status !== "No Reply") return false;
       return true;
     });
-  }, [prospects, filterTemplate, filterStatus]);
+  }, [prospects, filterTemplate, filterStatus, filterNeedsUpdate]);
 
   function optimisticAdd(p: Prospect) { setProspects(prev => [p, ...prev]); }
   function optimisticUpdate(id: string, data: EditState) {
     setProspects(prev => prev.map(p => p.id === id ? { ...p, ...data } : p));
   }
   function optimisticDelete(id: string) { setProspects(prev => prev.filter(p => p.id !== id)); }
+
+  function handleQuickLog(name: string, template: string) {
+    const fd = new FormData();
+    fd.set("prospect_name", name);
+    fd.set("date_messaged", todayStr);
+    fd.set("template_used", template);
+    fd.set("reply_status", "No Reply");
+    fd.set("call_booked", "false");
+
+    const temp: Prospect = {
+      id: crypto.randomUUID(),
+      prospect_name: name,
+      instagram_handle: null,
+      date_messaged: todayStr,
+      template_used: template as Prospect["template_used"],
+      reply_status: "No Reply",
+      call_booked: false,
+      notes: null,
+      followers_k: null,
+      pipeline_client_id: null,
+      created_at: new Date().toISOString(),
+    };
+    optimisticAdd(temp);
+    startTransition(async () => {
+      try { await addProspect(fd); } catch {}
+    });
+  }
 
   async function handleAdd() {
     if (!form.prospect_name.trim()) return;
@@ -391,267 +517,326 @@ export default function OutreachTracker({
     return t?.name ? `${letter}: ${t.name}` : `Template ${letter}`;
   }
 
+  const activeFilters = filterTemplate !== "all" || filterStatus !== "all" || filterNeedsUpdate;
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-white">Outreach Tracker</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">{prospects.length} prospects tracked</p>
-        </div>
-        <Button size="sm" onClick={() => setShowAdd(v => !v)}>
-          <Plus size={14} className="mr-1.5" />
-          Add Prospect
-        </Button>
+    <div className="max-w-7xl mx-auto">
+
+      {/* ── Sticky Quick Log Bar ── */}
+      <div className="sticky top-14 lg:top-0 z-20 -mx-4 lg:-mx-8 px-4 lg:px-8 bg-[#0a0b0f] border-b border-[#1e2130]">
+        <QuickLogBar
+          todayCount={stats.sentToday}
+          onLog={handleQuickLog}
+          isPending={isPending}
+        />
       </div>
 
-      {/* Stats bar */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { label: "Sent Today",         value: stats.sentToday,         suffix: "" },
-          { label: "Reply Rate",          value: stats.replyRate,         suffix: "%" },
-          { label: "Positive Reply Rate", value: stats.positiveRate,      suffix: "%" },
-          { label: "Calls Booked",        value: stats.callsBooked,       suffix: "" },
-        ].map(stat => (
-          <Card key={stat.label} className="px-5 py-4">
-            <p className="text-xs text-zinc-500 mb-1">{stat.label}</p>
-            <p className="text-2xl font-bold text-white">
-              {stat.value}<span className="text-zinc-400 text-base">{stat.suffix}</span>
-            </p>
-          </Card>
-        ))}
-      </div>
+      {/* ── Rest of content ── */}
+      <div className="space-y-6 pt-6">
 
-      {/* Follow-up alert */}
-      <FollowUpAlert prospects={prospects} onUpdateStatus={handleUpdateStatus} />
-
-      {/* Template performance chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Template Performance</CardTitle>
-          {bestTemplate && (
-            <span className="flex items-center gap-1 text-xs font-medium text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2.5 py-1 rounded-full">
-              <TrendingUp size={11} />
-              {bestTemplate.name} winning
-            </span>
-          )}
-        </CardHeader>
-        <CardBody>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={templateChartData} barSize={36}>
-              <XAxis dataKey="shortName" tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} interval={0} />
-              <YAxis unit="%" tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 100]} />
-              <Tooltip
-                contentStyle={{ background: "#111318", border: "1px solid #1e2130", borderRadius: 8, fontSize: 12 }}
-                labelStyle={{ color: "#f0f2f8" }}
-                formatter={(value) => [`${value}%`, "Reply Rate"]}
-              />
-              <Bar dataKey="replyRate" radius={[4, 4, 0, 0]}>
-                {templateChartData.map(t => (
-                  <Cell key={t.letter} fill={t.letter === bestTemplate?.letter ? "#7c3aed" : "#3f3f46"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-          <div className="flex flex-wrap gap-4 mt-2">
-            {templateChartData.map(t => (
-              <div key={t.letter} className="text-xs text-zinc-500">
-                <span className="text-zinc-400 font-medium">{t.name}</span>: {t.sent} sent · {t.replyRate}%
-              </div>
-            ))}
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-white">Outreach Tracker</h1>
+            <p className="text-sm text-zinc-500 mt-0.5">{prospects.length} prospects tracked</p>
           </div>
-        </CardBody>
-      </Card>
-
-      {/* Template editor */}
-      <TemplateManager templates={templates} />
-
-      {/* Add prospect modal */}
-      {showAdd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setShowAdd(false)} />
-          <div className="relative bg-[#111318] border border-[#1e2130] rounded-2xl w-full max-w-lg shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e2130]">
-              <h2 className="text-sm font-semibold text-white">New Prospect</h2>
-              <button onClick={() => setShowAdd(false)} className="text-zinc-500 hover:text-zinc-300"><X size={16} /></button>
-            </div>
-            <div className="px-6 py-5 grid grid-cols-2 gap-3">
-              <Field label="Name *" className="col-span-2">
-                <input autoFocus className="input-base" value={form.prospect_name} onChange={e => setForm(f => ({ ...f, prospect_name: e.target.value }))} placeholder="John Smith"
-                  onKeyDown={e => { if (e.key === "Enter") handleAdd(); }} />
-              </Field>
-              <Field label="Instagram Handle">
-                <input className="input-base" value={form.instagram_handle} onChange={e => setForm(f => ({ ...f, instagram_handle: e.target.value }))} placeholder="@handle" />
-              </Field>
-              <Field label="Followers (K)">
-                <div className="relative">
-                  <input type="number" min="0" className="input-base pr-8" value={form.followers_k} onChange={e => setForm(f => ({ ...f, followers_k: e.target.value }))} placeholder="e.g. 25" />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 pointer-events-none">K</span>
-                </div>
-              </Field>
-              <Field label="Template">
-                <select className="input-base" value={form.template_used} onChange={e => setForm(f => ({ ...f, template_used: e.target.value }))}>
-                  {TEMPLATES.map(t => <option key={t} value={t}>{templateLabel(t)}</option>)}
-                </select>
-              </Field>
-              <Field label="Date Messaged">
-                <input type="date" className="input-base" value={form.date_messaged} onChange={e => setForm(f => ({ ...f, date_messaged: e.target.value }))} />
-              </Field>
-              <Field label="Reply Status">
-                <select className="input-base" value={form.reply_status} onChange={e => {
-                  const rs = e.target.value;
-                  setForm(f => ({ ...f, reply_status: rs, call_booked: rs === "Call Booked" ? true : f.call_booked }));
-                }}>
-                  {REPLY_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </Field>
-              <Field label="Call Booked">
-                <div className="flex items-center h-9">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={form.call_booked} onChange={e => setForm(f => ({ ...f, call_booked: e.target.checked }))} className="w-4 h-4 rounded accent-violet-600" />
-                    <span className="text-sm text-zinc-300">Yes</span>
-                  </label>
-                </div>
-              </Field>
-              <Field label="Notes" className="col-span-2">
-                <textarea className="input-base resize-none" rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional..." />
-              </Field>
-            </div>
-            <div className="flex gap-3 px-6 pb-5">
-              <Button size="sm" onClick={handleAdd} loading={isPending}>Add Prospect</Button>
-              <Button size="sm" variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <select className="input-base w-auto text-xs" value={filterTemplate} onChange={e => setFilterTemplate(e.target.value)}>
-          <option value="all">All Templates</option>
-          {TEMPLATES.map(t => <option key={t} value={t}>{templateLabel(t)}</option>)}
-        </select>
-        <select className="input-base w-auto text-xs" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-          <option value="all">All Statuses</option>
-          {REPLY_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        {(filterTemplate !== "all" || filterStatus !== "all") && (
-          <Button size="sm" variant="ghost" onClick={() => { setFilterTemplate("all"); setFilterStatus("all"); }}>
-            Clear filters
+          <Button size="sm" onClick={() => setShowAdd(v => !v)}>
+            <Plus size={14} className="mr-1.5" />
+            Add Prospect
           </Button>
-        )}
-      </div>
+        </div>
 
-      {/* Prospects table */}
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#1e2130]">
-                {["Name", "Handle", "Followers", "Date", "Template", "Status", "Call", "Notes", ""].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-zinc-500 text-sm">
-                    No prospects yet. Add your first one above.
-                  </td>
+        {/* Stats bar */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { label: "Sent Today",          value: stats.sentToday,    suffix: "" },
+            { label: "Reply Rate",           value: stats.replyRate,    suffix: "%" },
+            { label: "Positive Reply Rate",  value: stats.positiveRate, suffix: "%" },
+            { label: "Calls Booked",         value: stats.callsBooked,  suffix: "" },
+          ].map(stat => (
+            <Card key={stat.label} className="px-5 py-4">
+              <p className="text-xs text-zinc-500 mb-1">{stat.label}</p>
+              <p className="text-2xl font-bold text-white">
+                {stat.value}<span className="text-zinc-400 text-base">{stat.suffix}</span>
+              </p>
+            </Card>
+          ))}
+        </div>
+
+        {/* Follow-up alert */}
+        <FollowUpAlert prospects={prospects} onUpdateStatus={handleUpdateStatus} />
+
+        {/* Template performance chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Template Performance</CardTitle>
+            {bestTemplate && (
+              <span className="flex items-center gap-1 text-xs font-medium text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2.5 py-1 rounded-full">
+                <TrendingUp size={11} />
+                {bestTemplate.name} winning
+              </span>
+            )}
+          </CardHeader>
+          <CardBody>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={templateChartData} barSize={36}>
+                <XAxis dataKey="shortName" tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} interval={0} />
+                <YAxis unit="%" tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 100]} />
+                <Tooltip
+                  contentStyle={{ background: "#111318", border: "1px solid #1e2130", borderRadius: 8, fontSize: 12 }}
+                  labelStyle={{ color: "#f0f2f8" }}
+                  formatter={(value) => [`${value}%`, "Reply Rate"]}
+                />
+                <Bar dataKey="replyRate" radius={[4, 4, 0, 0]}>
+                  {templateChartData.map(t => (
+                    <Cell key={t.letter} fill={t.letter === bestTemplate?.letter ? "#7c3aed" : "#3f3f46"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="flex flex-wrap gap-4 mt-2">
+              {templateChartData.map(t => (
+                <div key={t.letter} className="text-xs text-zinc-500">
+                  <span className="text-zinc-400 font-medium">{t.name}</span>: {t.sent} sent · {t.replyRate}%
+                </div>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* Template editor */}
+        <TemplateManager templates={templates} />
+
+        {/* Add prospect modal */}
+        {showAdd && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60" onClick={() => setShowAdd(false)} />
+            <div className="relative bg-[#111318] border border-[#1e2130] rounded-2xl w-full max-w-lg shadow-2xl">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e2130]">
+                <h2 className="text-sm font-semibold text-white">New Prospect</h2>
+                <button onClick={() => setShowAdd(false)} className="text-zinc-500 hover:text-zinc-300"><X size={16} /></button>
+              </div>
+              <div className="px-6 py-5 grid grid-cols-2 gap-3">
+                <Field label="Name *" className="col-span-2">
+                  <input autoFocus className="input-base" value={form.prospect_name} onChange={e => setForm(f => ({ ...f, prospect_name: e.target.value }))} placeholder="John Smith"
+                    onKeyDown={e => { if (e.key === "Enter") handleAdd(); }} />
+                </Field>
+                <Field label="Instagram Handle">
+                  <input className="input-base" value={form.instagram_handle} onChange={e => setForm(f => ({ ...f, instagram_handle: e.target.value }))} placeholder="@handle" />
+                </Field>
+                <Field label="Followers (K)">
+                  <div className="relative">
+                    <input type="number" min="0" className="input-base pr-8" value={form.followers_k} onChange={e => setForm(f => ({ ...f, followers_k: e.target.value }))} placeholder="e.g. 25" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 pointer-events-none">K</span>
+                  </div>
+                </Field>
+                <Field label="Template">
+                  <select className="input-base" value={form.template_used} onChange={e => setForm(f => ({ ...f, template_used: e.target.value }))}>
+                    {TEMPLATES.map(t => <option key={t} value={t}>{templateLabel(t)}</option>)}
+                  </select>
+                </Field>
+                <Field label="Date Messaged">
+                  <input type="date" className="input-base" value={form.date_messaged} onChange={e => setForm(f => ({ ...f, date_messaged: e.target.value }))} />
+                </Field>
+                <Field label="Reply Status">
+                  <select className="input-base" value={form.reply_status} onChange={e => {
+                    const rs = e.target.value;
+                    setForm(f => ({ ...f, reply_status: rs, call_booked: rs === "Call Booked" ? true : f.call_booked }));
+                  }}>
+                    {REPLY_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </Field>
+                <Field label="Call Booked">
+                  <div className="flex items-center h-9">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={form.call_booked} onChange={e => setForm(f => ({ ...f, call_booked: e.target.checked }))} className="w-4 h-4 rounded accent-violet-600" />
+                      <span className="text-sm text-zinc-300">Yes</span>
+                    </label>
+                  </div>
+                </Field>
+                <Field label="Notes" className="col-span-2">
+                  <textarea className="input-base resize-none" rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional..." />
+                </Field>
+              </div>
+              <div className="flex gap-3 px-6 pb-5">
+                <Button size="sm" onClick={handleAdd} loading={isPending}>Add Prospect</Button>
+                <Button size="sm" variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-2 items-center">
+          <select
+            className="input-base w-auto text-xs"
+            value={filterTemplate}
+            onChange={e => setFilterTemplate(e.target.value)}
+          >
+            <option value="all">All Templates</option>
+            {TEMPLATES.map(t => <option key={t} value={t}>{templateLabel(t)}</option>)}
+          </select>
+
+          <select
+            className="input-base w-auto text-xs"
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+          >
+            <option value="all">All Statuses</option>
+            {REPLY_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+
+          <button
+            onClick={() => setFilterNeedsUpdate(v => !v)}
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+              filterNeedsUpdate
+                ? "bg-amber-500/15 border-amber-500/30 text-amber-300"
+                : "border-[#1e2130] text-zinc-500 hover:border-zinc-600 hover:text-zinc-300 bg-[#0a0b0f]"
+            }`}
+          >
+            <Bell size={11} />
+            Needs Update
+            {filterNeedsUpdate && (
+              <span className="ml-0.5 text-amber-400 font-bold">
+                ({filtered.length})
+              </span>
+            )}
+          </button>
+
+          {activeFilters && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => { setFilterTemplate("all"); setFilterStatus("all"); setFilterNeedsUpdate(false); }}
+            >
+              <RotateCcw size={11} className="mr-1" />
+              Clear
+            </Button>
+          )}
+        </div>
+
+        {/* Prospects table */}
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#1e2130]">
+                  {["Name", "Handle", "Followers", "Date", "Template", "Status", "Call", "Notes", ""].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  ))}
                 </tr>
-              )}
-              {filtered.map(p => {
-                const isEditing = editId === p.id;
-                return (
-                  <tr key={p.id} className="border-b border-[#1e2130] hover:bg-zinc-800/20 transition-colors">
-                    <td className="px-4 py-3 font-medium text-zinc-100 whitespace-nowrap">
-                      {isEditing ? (
-                        <input className="input-base w-32" value={editState.prospect_name ?? ""} onChange={e => setEditState(s => ({ ...s, prospect_name: e.target.value }))} />
-                      ) : p.prospect_name}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-400">
-                      {isEditing ? (
-                        <input className="input-base w-28" value={editState.instagram_handle ?? ""} onChange={e => setEditState(s => ({ ...s, instagram_handle: e.target.value || null }))} />
-                      ) : (p.instagram_handle ?? "—")}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-400 whitespace-nowrap">
-                      {isEditing ? (
-                        <div className="relative w-20">
-                          <input type="number" min="0" className="input-base pr-6" value={editState.followers_k ?? ""} onChange={e => setEditState(s => ({ ...s, followers_k: e.target.value ? Number(e.target.value) : null }))} />
-                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-zinc-500 pointer-events-none">K</span>
-                        </div>
-                      ) : p.followers_k != null ? (
-                        <span className="text-zinc-300 font-medium">{p.followers_k}K</span>
-                      ) : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-400 whitespace-nowrap">
-                      {isEditing ? (
-                        <input type="date" className="input-base w-36" value={editState.date_messaged ?? ""} onChange={e => setEditState(s => ({ ...s, date_messaged: e.target.value }))} />
-                      ) : p.date_messaged}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <select className="input-base w-40" value={editState.template_used ?? ""} onChange={e => setEditState(s => ({ ...s, template_used: e.target.value as Prospect["template_used"] }))}>
-                          {TEMPLATES.map(t => <option key={t} value={t}>{templateLabel(t)}</option>)}
-                        </select>
-                      ) : (
-                        <div>
-                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-zinc-800 text-zinc-300">
-                            {p.template_used ?? "—"}
-                          </span>
-                          {p.template_used && templateMap[p.template_used]?.name && (
-                            <p className="text-xs text-zinc-600 mt-0.5 max-w-[100px] truncate">{templateMap[p.template_used].name}</p>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <select className="input-base w-36" value={editState.reply_status ?? "No Reply"} onChange={e => setEditState(s => ({ ...s, reply_status: e.target.value as Prospect["reply_status"] }))}>
-                          {REPLY_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                      ) : (
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[p.reply_status]}`}>
-                          {p.reply_status}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input type="checkbox" checked={editState.call_booked ?? false} onChange={e => setEditState(s => ({ ...s, call_booked: e.target.checked }))} className="w-4 h-4 accent-violet-600" />
-                      ) : (
-                        <span className={`text-xs font-medium ${p.call_booked ? "text-emerald-400" : "text-zinc-500"}`}>
-                          {p.call_booked ? "Yes" : "No"}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-500 max-w-[160px] truncate">
-                      {isEditing ? (
-                        <input className="input-base w-32" value={editState.notes ?? ""} onChange={e => setEditState(s => ({ ...s, notes: e.target.value || null }))} />
-                      ) : (p.notes ?? "—")}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        {isEditing ? (
-                          <>
-                            <button onClick={() => handleSaveEdit(p.id)} className="p-1.5 rounded text-emerald-400 hover:bg-emerald-400/10"><Check size={14} /></button>
-                            <button onClick={() => setEditId(null)} className="p-1.5 rounded text-zinc-400 hover:bg-zinc-700"><X size={14} /></button>
-                          </>
-                        ) : (
-                          <>
-                            <button onClick={() => startEdit(p)} className="p-1.5 rounded text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800"><Pencil size={13} /></button>
-                            <button onClick={() => handleDelete(p.id)} className="p-1.5 rounded text-zinc-500 hover:text-red-400 hover:bg-red-400/10"><Trash2 size={13} /></button>
-                          </>
-                        )}
-                      </div>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-10 text-center text-zinc-500 text-sm">
+                      {filterNeedsUpdate
+                        ? "No prospects need a status update — you're all caught up."
+                        : "No prospects yet. Use the Quick Log bar above to add your first one."}
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+                )}
+                {filtered.map(p => {
+                  const isEditing = editId === p.id;
+                  return (
+                    <tr key={p.id} className="border-b border-[#1e2130] hover:bg-zinc-800/20 transition-colors">
+                      <td className="px-4 py-3 font-medium text-zinc-100 whitespace-nowrap">
+                        {isEditing ? (
+                          <input className="input-base w-32" value={editState.prospect_name ?? ""} onChange={e => setEditState(s => ({ ...s, prospect_name: e.target.value }))} />
+                        ) : p.prospect_name}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-400">
+                        {isEditing ? (
+                          <input className="input-base w-28" value={editState.instagram_handle ?? ""} onChange={e => setEditState(s => ({ ...s, instagram_handle: e.target.value || null }))} />
+                        ) : (p.instagram_handle ?? "—")}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-400 whitespace-nowrap">
+                        {isEditing ? (
+                          <div className="relative w-20">
+                            <input type="number" min="0" className="input-base pr-6" value={editState.followers_k ?? ""} onChange={e => setEditState(s => ({ ...s, followers_k: e.target.value ? Number(e.target.value) : null }))} />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-zinc-500 pointer-events-none">K</span>
+                          </div>
+                        ) : p.followers_k != null ? (
+                          <span className="text-zinc-300 font-medium">{p.followers_k}K</span>
+                        ) : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-400 whitespace-nowrap">
+                        {isEditing ? (
+                          <input type="date" className="input-base w-36" value={editState.date_messaged ?? ""} onChange={e => setEditState(s => ({ ...s, date_messaged: e.target.value }))} />
+                        ) : p.date_messaged}
+                      </td>
+                      <td className="px-4 py-3">
+                        {isEditing ? (
+                          <select className="input-base w-40" value={editState.template_used ?? ""} onChange={e => setEditState(s => ({ ...s, template_used: e.target.value as Prospect["template_used"] }))}>
+                            {TEMPLATES.map(t => <option key={t} value={t}>{templateLabel(t)}</option>)}
+                          </select>
+                        ) : (
+                          <div>
+                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-zinc-800 text-zinc-300">
+                              {p.template_used ?? "—"}
+                            </span>
+                            {p.template_used && templateMap[p.template_used]?.name && (
+                              <p className="text-xs text-zinc-600 mt-0.5 max-w-[100px] truncate">{templateMap[p.template_used].name}</p>
+                            )}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* ── Cycle status button ── */}
+                      <td className="px-4 py-3">
+                        {isEditing ? (
+                          <select className="input-base w-36" value={editState.reply_status ?? "No Reply"} onChange={e => setEditState(s => ({ ...s, reply_status: e.target.value as Prospect["reply_status"] }))}>
+                            {REPLY_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        ) : (
+                          <button
+                            onClick={() => handleUpdateStatus(p.id, nextStatus(p.reply_status))}
+                            title={`Tap to mark as ${nextStatus(p.reply_status)}`}
+                            className={`px-2 py-1 rounded text-xs font-medium transition-all hover:ring-1 hover:ring-white/20 active:scale-95 cursor-pointer ${STATUS_COLORS[p.reply_status]}`}
+                          >
+                            {p.reply_status}
+                          </button>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        {isEditing ? (
+                          <input type="checkbox" checked={editState.call_booked ?? false} onChange={e => setEditState(s => ({ ...s, call_booked: e.target.checked }))} className="w-4 h-4 accent-violet-600" />
+                        ) : (
+                          <span className={`text-xs font-medium ${p.call_booked ? "text-emerald-400" : "text-zinc-500"}`}>
+                            {p.call_booked ? "Yes" : "No"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-500 max-w-[160px] truncate">
+                        {isEditing ? (
+                          <input className="input-base w-32" value={editState.notes ?? ""} onChange={e => setEditState(s => ({ ...s, notes: e.target.value || null }))} />
+                        ) : (p.notes ?? "—")}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          {isEditing ? (
+                            <>
+                              <button onClick={() => handleSaveEdit(p.id)} className="p-1.5 rounded text-emerald-400 hover:bg-emerald-400/10"><Check size={14} /></button>
+                              <button onClick={() => setEditId(null)} className="p-1.5 rounded text-zinc-400 hover:bg-zinc-700"><X size={14} /></button>
+                            </>
+                          ) : (
+                            <>
+                              <button onClick={() => startEdit(p)} className="p-1.5 rounded text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800"><Pencil size={13} /></button>
+                              <button onClick={() => handleDelete(p.id)} className="p-1.5 rounded text-zinc-500 hover:text-red-400 hover:bg-red-400/10"><Trash2 size={13} /></button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+      </div>
     </div>
   );
 }
