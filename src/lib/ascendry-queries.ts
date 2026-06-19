@@ -128,3 +128,40 @@ export async function getAscendryUsers(): Promise<AscendryUser[]> {
     .order("display_name");
   return (data as AscendryUser[]) ?? [];
 }
+
+export interface CallSession {
+  id: string;
+  prospect_id: string | null;
+  client_id: string;
+  call_type: "diagnostic" | "close";
+  scheduled_at: string | null;
+  status: "upcoming" | "in_progress" | "completed" | "no_show";
+  prep_notes: string | null;
+  their_offer: string | null;
+  their_price_point: string | null;
+  leads_per_week: string | null;
+  current_close_rate: string | null;
+  follow_up_process: string | null;
+  their_90_day_goal: string | null;
+  urgency_level: "low" | "medium" | "high";
+  decision_maker: boolean;
+  second_decision_maker: string | null;
+  key_phrases: string[];
+  emotional_signals: string | null;
+  disqualification_flags: string[];
+  outcome: "progressed" | "closed" | "lost" | "follow_up" | "disqualified" | null;
+  outcome_notes: string | null;
+  next_step: string | null;
+  next_call_scheduled_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getCallSessions(): Promise<CallSession[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("ascendry_call_sessions")
+    .select("*")
+    .order("created_at", { ascending: false });
+  return (data as CallSession[]) ?? [];
+}

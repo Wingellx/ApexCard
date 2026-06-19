@@ -12,11 +12,15 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Plus, Trash2, Pencil, X, Check, GripVertical, Calendar, PoundSterling } from "lucide-react";
+import {
+  Plus, Trash2, Pencil, X, Check, GripVertical,
+  Calendar, PoundSterling, Phone, Clock, AlertTriangle,
+} from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { addClient, updateClient, deleteClient, moveClientStage } from "@/app/ascendry/actions";
-import type { AscendryClient } from "@/lib/ascendry-queries";
+import CallSlideOver from "@/components/ascendry/CallSlideOver";
+import type { AscendryClient, CallSession } from "@/lib/ascendry-queries";
 
 const STAGES = [
   "Prospect",
@@ -50,6 +54,22 @@ const STAGE_DOT: Record<Stage, string> = {
   "Exited":         "bg-zinc-500",
 };
 
+const OUTCOME_LABELS: Record<string, string> = {
+  progressed:   "Progressed",
+  closed:       "Closed",
+  lost:         "Lost",
+  follow_up:    "Follow Up",
+  disqualified: "Disqualified",
+};
+
+const OUTCOME_COLORS: Record<string, string> = {
+  progressed:   "text-violet-400 bg-violet-600/10 border-violet-600/20",
+  closed:       "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+  lost:         "text-zinc-500 bg-zinc-800 border-zinc-700",
+  follow_up:    "text-amber-400 bg-amber-500/10 border-amber-500/20",
+  disqualified: "text-red-400 bg-red-500/10 border-red-500/20",
+};
+
 const DEFAULT_FORM = {
   name: "",
   amount_gbp: "",
@@ -64,20 +84,77 @@ function fmt(n: number | null): string {
   return `£${n.toLocaleString("en-GB", { minimumFractionDigits: 0 })}`;
 }
 
+function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+// ─── Card helpers ─────────────────────────────────────────────────────────────
+
+function clientSessions(client: AscendryClient, allSessions: CallSession[]): CallSession[] {
+  return allSessions
+    .filter(s => s.client_id === client.id)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+}
+
+function isDisqualified(sessions: CallSession[]): boolean {
+  return sessions.some(
+    s => s.outcome === "disqualified" || (s.disqualification_flags?.length ?? 0) > 0
+  );
+}
+
+function isHighUrgency(sessions: CallSession[]): boolean {
+  const latest = sessions[0];
+  return latest?.urgency_level === "high" && !latest.outcome;
+}
+
+function followUpSession(sessions: CallSession[]): CallSession | null {
+  return sessions.find(s => s.outcome === "follow_up") ?? null;
+}
+
+// ─── Kanban card content ──────────────────────────────────────────────────────
+
 interface ClientCardProps {
   client: AscendryClient;
+  sessions: CallSession[];
   isAdmin: boolean;
   onEdit: (c: AscendryClient) => void;
   onDelete: (id: string) => void;
+  onOpenCall: (c: AscendryClient) => void;
   isDragging?: boolean;
 }
 
-function ClientCardContent({ client, isAdmin, onEdit, onDelete }: Omit<ClientCardProps, "isDragging">) {
+function ClientCardContent({
+  client, sessions, isAdmin, onEdit, onDelete, onOpenCall,
+}: Omit<ClientCardProps, "isDragging">) {
+  const disqualified = isDisqualified(sessions);
+  const highUrgency = isHighUrgency(sessions);
+  const followUp = followUpSession(sessions);
+  const recentSessions = sessions.slice(0, 3);
+
   return (
-    <div className="bg-[#111318] border border-[#1e2130] rounded-xl p-3 space-y-2 shadow-sm">
+    <div
+      className={`bg-[#111318] rounded-xl p-3 space-y-2 shadow-sm border ${
+        disqualified
+          ? "border-red-500/50"
+          : "border-[#1e2130]"
+      }`}
+    >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-medium text-zinc-100 leading-snug">{client.name}</p>
+        <div className="flex items-center gap-1.5 min-w-0">
+          {highUrgency && (
+            <div className="shrink-0 w-1.5 h-1.5 rounded-full bg-amber-400 mt-1" title="High urgency" />
+          )}
+          <p className="text-sm font-medium text-zinc-100 leading-snug truncate">{client.name}</p>
+        </div>
         <div className="flex items-center gap-0.5 shrink-0 mt-0.5">
+          <button
+            onClick={() => onOpenCall(client)}
+            className="p-1 rounded text-zinc-600 hover:text-violet-400 hover:bg-violet-600/10 transition-colors"
+            title="Call scripts & playbook"
+          >
+            <Phone size={11} />
+          </button>
           <button
             onClick={() => onEdit(client)}
             className="p-1 rounded text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 transition-colors"
@@ -94,28 +171,67 @@ function ClientCardContent({ client, isAdmin, onEdit, onDelete }: Omit<ClientCar
           )}
         </div>
       </div>
+
       {client.amount_gbp && (
         <div className="flex items-center gap-1 text-xs text-emerald-400">
           <PoundSterling size={10} />
           {client.amount_gbp.toLocaleString("en-GB")}
         </div>
       )}
+
       {client.start_date && (
         <div className="flex items-center gap-1 text-xs text-zinc-500">
           <Calendar size={10} />
           {client.start_date}
         </div>
       )}
-      {client.next_action && (
+
+      {/* Follow-up badge */}
+      {followUp && (
+        <div className="flex items-center gap-1.5 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2 py-1">
+          <Clock size={10} />
+          <span>
+            Follow up{followUp.next_call_scheduled_at
+              ? `: ${fmtDate(followUp.next_call_scheduled_at)}`
+              : " pending"}
+          </span>
+        </div>
+      )}
+
+      {client.next_action && !followUp && (
         <p className="text-xs text-zinc-500 border-t border-[#1e2130] pt-1.5 mt-1">
           → {client.next_action}
         </p>
+      )}
+
+      {/* Call history mini-timeline */}
+      {recentSessions.length > 0 && (
+        <div className="border-t border-[#1e2130] pt-2 mt-1 space-y-1.5">
+          {recentSessions.map(s => (
+            <div key={s.id} className="flex items-center gap-1.5">
+              <Phone size={9} className="text-zinc-700 shrink-0" />
+              <span className="text-[10px] text-zinc-600">
+                {s.call_type === "diagnostic" ? "Call 1" : "Call 2"}
+              </span>
+              {s.outcome && (
+                <span className={`text-[10px] px-1 py-0.5 rounded border ${OUTCOME_COLORS[s.outcome]}`}>
+                  {OUTCOME_LABELS[s.outcome]}
+                </span>
+              )}
+              <span className="text-[10px] text-zinc-700 ml-auto shrink-0">
+                {new Date(s.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+              </span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
 }
 
-function SortableCard({ client, isAdmin, onEdit, onDelete }: Omit<ClientCardProps, "isDragging">) {
+function SortableCard({
+  client, sessions, isAdmin, onEdit, onDelete, onOpenCall,
+}: Omit<ClientCardProps, "isDragging">) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: client.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -133,11 +249,20 @@ function SortableCard({ client, isAdmin, onEdit, onDelete }: Omit<ClientCardProp
         <GripVertical size={12} />
       </div>
       <div className="pl-4">
-        <ClientCardContent client={client} isAdmin={isAdmin} onEdit={onEdit} onDelete={onDelete} />
+        <ClientCardContent
+          client={client}
+          sessions={sessions}
+          isAdmin={isAdmin}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onOpenCall={onOpenCall}
+        />
       </div>
     </div>
   );
 }
+
+// ─── Edit modal ───────────────────────────────────────────────────────────────
 
 interface EditModalProps {
   client: AscendryClient;
@@ -212,12 +337,89 @@ function EditModal({ client, onSave, onClose }: EditModalProps) {
   );
 }
 
-export default function KanbanBoard({ clients: initial, isAdmin }: { clients: AscendryClient[]; isAdmin: boolean }) {
+// ─── Upcoming calls section ───────────────────────────────────────────────────
+
+function UpcomingCallsSection({
+  sessions, clients, onOpenCall,
+}: { sessions: CallSession[]; clients: AscendryClient[]; onOpenCall: (c: AscendryClient) => void }) {
+  const now = new Date();
+  const inSevenDays = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  const upcoming = sessions
+    .filter(s =>
+      s.scheduled_at &&
+      s.status === "upcoming" &&
+      new Date(s.scheduled_at) >= now &&
+      new Date(s.scheduled_at) <= inSevenDays
+    )
+    .sort((a, b) => a.scheduled_at!.localeCompare(b.scheduled_at!));
+
+  if (upcoming.length === 0) return null;
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <Clock size={14} className="text-violet-400" />
+        <h2 className="text-sm font-semibold text-zinc-300">Upcoming Calls — Next 7 Days</h2>
+        <span className="text-xs text-zinc-600 ml-1">{upcoming.length}</span>
+      </div>
+      <div className="flex gap-3 overflow-x-auto pb-2">
+        {upcoming.map(s => {
+          const clientRecord = clients.find(c => c.id === s.client_id);
+          if (!clientRecord) return null;
+          return (
+            <div
+              key={s.id}
+              className="shrink-0 bg-[#111318] border border-[#1e2130] rounded-xl px-4 py-3 flex items-center gap-3 min-w-[220px] max-w-[280px]"
+            >
+              <div className="w-8 h-8 rounded-lg bg-violet-600/15 border border-violet-600/20 flex items-center justify-center shrink-0">
+                <Phone size={13} className="text-violet-400" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-zinc-100 truncate">{clientRecord.name}</p>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  {s.call_type === "diagnostic" ? "Call 1 — Diagnostic" : "Call 2 — Close"}
+                </p>
+                <p className="text-xs text-violet-400 mt-0.5">
+                  {new Date(s.scheduled_at!).toLocaleString("en-GB", {
+                    weekday: "short", day: "numeric", month: "short",
+                    hour: "2-digit", minute: "2-digit",
+                  })}
+                </p>
+              </div>
+              <button
+                onClick={() => onOpenCall(clientRecord)}
+                className="shrink-0 p-1.5 rounded-lg text-zinc-500 hover:text-violet-400 hover:bg-violet-600/10 transition-colors"
+                title="Open call prep"
+              >
+                <Phone size={13} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main KanbanBoard ─────────────────────────────────────────────────────────
+
+export default function KanbanBoard({
+  clients: initial,
+  isAdmin,
+  initialSessions,
+}: {
+  clients: AscendryClient[];
+  isAdmin: boolean;
+  initialSessions: CallSession[];
+}) {
   const [clients, setClients] = useState<AscendryClient[]>(initial);
+  const [allSessions, setAllSessions] = useState<CallSession[]>(initialSessions);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showAddStage, setShowAddStage] = useState<Stage | null>(null);
   const [addForm, setAddForm] = useState(DEFAULT_FORM);
   const [editClient, setEditClient] = useState<AscendryClient | null>(null);
+  const [callClient, setCallClient] = useState<AscendryClient | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -237,7 +439,6 @@ export default function KanbanBoard({ clients: initial, isAdmin }: { clients: As
     const draggedId = active.id as string;
     const overId = over.id as string;
 
-    // over.id could be a stage name or a client id
     const targetStage = (STAGES as readonly string[]).includes(overId)
       ? (overId as Stage)
       : clients.find(c => c.id === overId)?.stage;
@@ -248,9 +449,7 @@ export default function KanbanBoard({ clients: initial, isAdmin }: { clients: As
 
     setClients(prev => prev.map(c => c.id === draggedId ? { ...c, stage: targetStage } : c));
     startTransition(async () => {
-      try {
-        await moveClientStage(draggedId, targetStage);
-      } catch {}
+      try { await moveClientStage(draggedId, targetStage); } catch {}
     });
   }
 
@@ -297,6 +496,15 @@ export default function KanbanBoard({ clients: initial, isAdmin }: { clients: As
     });
   }
 
+  function handleSessionsChanged(updated: CallSession[], movedToStage?: string) {
+    setAllSessions(updated);
+    if (movedToStage && callClient) {
+      setClients(prev => prev.map(c =>
+        c.id === callClient.id ? { ...c, stage: movedToStage as Stage } : c
+      ));
+    }
+  }
+
   return (
     <div className="max-w-full">
       <div className="flex items-center justify-between mb-6">
@@ -306,17 +514,19 @@ export default function KanbanBoard({ clients: initial, isAdmin }: { clients: As
         </div>
       </div>
 
+      <UpcomingCallsSection
+        sessions={allSessions}
+        clients={clients}
+        onOpenCall={c => setCallClient(c)}
+      />
+
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4">
           {STAGES.map(stage => {
             const stageClients = byStage(stage);
             const isAdding = showAddStage === stage;
             return (
-              <div
-                key={stage}
-                id={stage}
-                className="flex-shrink-0 w-60"
-              >
+              <div key={stage} id={stage} className="flex-shrink-0 w-60">
                 {/* Column header */}
                 <div className={`rounded-t-xl border border-b-0 px-3 py-2.5 flex items-center justify-between ${STAGE_COLORS[stage]}`}>
                   <div className="flex items-center gap-2">
@@ -334,9 +544,11 @@ export default function KanbanBoard({ clients: initial, isAdmin }: { clients: As
                         <SortableCard
                           key={c.id}
                           client={c}
+                          sessions={clientSessions(c, allSessions)}
                           isAdmin={isAdmin}
                           onEdit={c => setEditClient(c)}
                           onDelete={handleDelete}
+                          onOpenCall={c => setCallClient(c)}
                         />
                       ))}
                     </div>
@@ -391,9 +603,11 @@ export default function KanbanBoard({ clients: initial, isAdmin }: { clients: As
             <div className="rotate-2 opacity-90 pl-4">
               <ClientCardContent
                 client={activeClient}
+                sessions={clientSessions(activeClient, allSessions)}
                 isAdmin={isAdmin}
                 onEdit={() => {}}
                 onDelete={() => {}}
+                onOpenCall={() => {}}
               />
             </div>
           )}
@@ -405,6 +619,17 @@ export default function KanbanBoard({ clients: initial, isAdmin }: { clients: As
           client={editClient}
           onSave={handleEdit}
           onClose={() => setEditClient(null)}
+        />
+      )}
+
+      {callClient && (
+        <CallSlideOver
+          client={callClient}
+          sessions={clientSessions(callClient, allSessions)}
+          onClose={() => setCallClient(null)}
+          onSessionsChanged={(updated, movedToStage) => {
+            handleSessionsChanged(updated, movedToStage);
+          }}
         />
       )}
     </div>

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getAscendryUser } from "@/lib/ascendry-queries";
+import { getAscendryUser, type CallSession } from "@/lib/ascendry-queries";
 
 async function requireAscendryUser() {
   const supabase = await createClient();
@@ -260,4 +260,88 @@ export async function deletePayment(id: string) {
   const { error } = await supabase.from("ascendry_payments").delete().eq("id", id);
   if (error) throw error;
   revalidatePath("/ascendry/revenue");
+}
+
+// ── Call Sessions ─────────────────────────────────────────────
+
+const OUTCOME_STAGE_MAP: Record<string, string | null> = {
+  progressed:    "Call Booked",
+  closed:        "Closed",
+  lost:          "Exited",
+  disqualified:  "Exited",
+  follow_up:     null, // stays in current stage
+};
+
+export async function upsertCallSession(data: {
+  id?: string;
+  client_id: string;
+  prospect_id?: string | null;
+  call_type: string;
+  scheduled_at?: string | null;
+  status?: string;
+  prep_notes?: string | null;
+  their_offer?: string | null;
+  their_price_point?: string | null;
+  leads_per_week?: string | null;
+  current_close_rate?: string | null;
+  follow_up_process?: string | null;
+  their_90_day_goal?: string | null;
+  urgency_level?: string;
+  decision_maker?: boolean;
+  second_decision_maker?: string | null;
+  key_phrases?: string[];
+  emotional_signals?: string | null;
+  disqualification_flags?: string[];
+  outcome?: string | null;
+  outcome_notes?: string | null;
+  next_step?: string | null;
+  next_call_scheduled_at?: string | null;
+}): Promise<CallSession> {
+  const { supabase } = await requireAscendryUser();
+
+  const payload = { ...data, updated_at: new Date().toISOString() };
+
+  let session: CallSession;
+  if (data.id) {
+    const { data: updated, error } = await supabase
+      .from("ascendry_call_sessions")
+      .update(payload)
+      .eq("id", data.id)
+      .select("*")
+      .single();
+    if (error) throw error;
+    session = updated as CallSession;
+  } else {
+    const { data: inserted, error } = await supabase
+      .from("ascendry_call_sessions")
+      .insert(payload)
+      .select("*")
+      .single();
+    if (error) throw error;
+    session = inserted as CallSession;
+  }
+
+  // Auto-move kanban stage when outcome is set
+  if (data.outcome) {
+    const newStage = OUTCOME_STAGE_MAP[data.outcome];
+    if (newStage) {
+      await supabase
+        .from("ascendry_clients")
+        .update({ stage: newStage, updated_at: new Date().toISOString() })
+        .eq("id", data.client_id);
+    }
+    // For follow_up: stamp next_action with the scheduled date
+    if (data.outcome === "follow_up" && data.next_call_scheduled_at) {
+      const dt = new Date(data.next_call_scheduled_at).toLocaleDateString("en-GB", {
+        day: "numeric", month: "short",
+      });
+      await supabase
+        .from("ascendry_clients")
+        .update({ next_action: `Follow up: ${dt}`, updated_at: new Date().toISOString() })
+        .eq("id", data.client_id);
+    }
+  }
+
+  revalidatePath("/ascendry/pipeline");
+  return session;
 }
