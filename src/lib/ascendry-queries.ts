@@ -165,3 +165,32 @@ export async function getCallSessions(): Promise<CallSession[]> {
     .order("created_at", { ascending: false });
   return (data as CallSession[]) ?? [];
 }
+
+export interface PitchDeck {
+  id: string;
+  client_id: string;
+  prospect_id: string | null;
+  s1_name: string | null;
+  s1_date: string | null;
+  s2_lead_stat: string | null;
+  s2_close_rate: string | null;
+  s2_follow_up: string | null;
+  s3_duration: string | null;
+  s3_leads_cold: string | null;
+  s3_close_rate: string | null;
+  s3_revenue_left: string | null;
+  s7_price: string | null;
+  s7_avg_value: string | null;
+  s7_breakeven: string | null;
+  s7_why_pays: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getPitchDecks(): Promise<PitchDeck[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("ascendry_pitch_decks")
+    .select("*");
+  return (data as PitchDeck[]) ?? [];
+}

@@ -7,7 +7,8 @@ import {
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { upsertCallSession } from "@/app/ascendry/actions";
-import type { AscendryClient, CallSession } from "@/lib/ascendry-queries";
+import type { AscendryClient, CallSession, PitchDeck } from "@/lib/ascendry-queries";
+import PitchDeckTab from "@/components/ascendry/PitchDeckTab";
 
 // ─── Script content ──────────────────────────────────────────────────────────
 
@@ -893,12 +894,13 @@ function ScriptTab({ prep, clientName, sessions, sessionId, onSaveOutcome, isSav
 interface CallSlideOverProps {
   client: AscendryClient;
   sessions: CallSession[];
+  savedDeck: PitchDeck | null;
   onClose: () => void;
   onSessionsChanged: (sessions: CallSession[], movedToStage?: string) => void;
 }
 
-export default function CallSlideOver({ client, sessions, onClose, onSessionsChanged }: CallSlideOverProps) {
-  const [activeTab, setActiveTab] = useState<"prep" | "script">("prep");
+export default function CallSlideOver({ client, sessions, savedDeck, onClose, onSessionsChanged }: CallSlideOverProps) {
+  const [activeTab, setActiveTab] = useState<"prep" | "script" | "deck">("prep");
   const [isPending, startTransition] = useTransition();
 
   // Find active session (most recent without outcome, or create new)
@@ -1014,7 +1016,7 @@ export default function CallSlideOver({ client, sessions, onClose, onSessionsCha
 
         {/* Tabs */}
         <div className="flex border-b border-[#1e2130] shrink-0">
-          {(["prep", "script"] as const).map(tab => (
+          {(["prep", "script", "deck"] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -1024,24 +1026,30 @@ export default function CallSlideOver({ client, sessions, onClose, onSessionsCha
                   : "text-zinc-500 hover:text-zinc-300"
               }`}
             >
-              {tab === "prep" ? "Prep" : "Script"}
+              {tab === "prep" ? "Prep" : tab === "script" ? "Script" : "Deck"}
             </button>
           ))}
         </div>
 
         {/* Tab content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-hidden flex flex-col">
           {activeTab === "prep" ? (
-            <PrepTab prep={prep} setPrep={setPrep} onSave={handleSavePrep} isSaving={isPending} />
+            <div className="flex-1 overflow-y-auto">
+              <PrepTab prep={prep} setPrep={setPrep} onSave={handleSavePrep} isSaving={isPending} />
+            </div>
+          ) : activeTab === "script" ? (
+            <div className="flex-1 overflow-y-auto">
+              <ScriptTab
+                prep={prep}
+                clientName={client.name}
+                sessions={sessions}
+                sessionId={sessionId}
+                onSaveOutcome={handleSaveOutcome}
+                isSaving={isPending}
+              />
+            </div>
           ) : (
-            <ScriptTab
-              prep={prep}
-              clientName={client.name}
-              sessions={sessions}
-              sessionId={sessionId}
-              onSaveOutcome={handleSaveOutcome}
-              isSaving={isPending}
-            />
+            <PitchDeckTab client={client} sessions={sessions} savedDeck={savedDeck} />
           )}
         </div>
       </div>

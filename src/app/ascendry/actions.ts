@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getAscendryUser, type CallSession } from "@/lib/ascendry-queries";
+import { getAscendryUser, type CallSession, type PitchDeck } from "@/lib/ascendry-queries";
 
 async function requireAscendryUser() {
   const supabase = await createClient();
@@ -344,4 +344,38 @@ export async function upsertCallSession(data: {
 
   revalidatePath("/ascendry/pipeline");
   return session;
+}
+
+// ── Pitch Decks ───────────────────────────────────────────────
+
+export async function upsertPitchDeck(data: {
+  id?: string;
+  client_id: string;
+  prospect_id?: string | null;
+  s1_name?: string | null;
+  s1_date?: string | null;
+  s2_lead_stat?: string | null;
+  s2_close_rate?: string | null;
+  s2_follow_up?: string | null;
+  s3_duration?: string | null;
+  s3_leads_cold?: string | null;
+  s3_close_rate?: string | null;
+  s3_revenue_left?: string | null;
+  s7_price?: string | null;
+  s7_avg_value?: string | null;
+  s7_breakeven?: string | null;
+  s7_why_pays?: string | null;
+}): Promise<PitchDeck> {
+  const { supabase } = await requireAscendryUser();
+  const payload = { ...data, updated_at: new Date().toISOString() };
+
+  const { data: result, error } = await supabase
+    .from("ascendry_pitch_decks")
+    .upsert(payload, { onConflict: "client_id" })
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  revalidatePath("/ascendry/pipeline");
+  return result as PitchDeck;
 }

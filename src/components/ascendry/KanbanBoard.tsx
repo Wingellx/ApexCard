@@ -20,7 +20,7 @@ import { Card } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { addClient, updateClient, deleteClient, moveClientStage } from "@/app/ascendry/actions";
 import CallSlideOver from "@/components/ascendry/CallSlideOver";
-import type { AscendryClient, CallSession } from "@/lib/ascendry-queries";
+import type { AscendryClient, CallSession, PitchDeck } from "@/lib/ascendry-queries";
 
 const STAGES = [
   "Prospect",
@@ -408,13 +408,16 @@ export default function KanbanBoard({
   clients: initial,
   isAdmin,
   initialSessions,
+  initialDecks,
 }: {
   clients: AscendryClient[];
   isAdmin: boolean;
   initialSessions: CallSession[];
+  initialDecks: PitchDeck[];
 }) {
   const [clients, setClients] = useState<AscendryClient[]>(initial);
   const [allSessions, setAllSessions] = useState<CallSession[]>(initialSessions);
+  const [allDecks] = useState<PitchDeck[]>(initialDecks);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showAddStage, setShowAddStage] = useState<Stage | null>(null);
   const [addForm, setAddForm] = useState(DEFAULT_FORM);
@@ -626,6 +629,7 @@ export default function KanbanBoard({
         <CallSlideOver
           client={callClient}
           sessions={clientSessions(callClient, allSessions)}
+          savedDeck={allDecks.find(d => d.client_id === callClient.id) ?? null}
           onClose={() => setCallClient(null)}
           onSessionsChanged={(updated, movedToStage) => {
             handleSessionsChanged(updated, movedToStage);

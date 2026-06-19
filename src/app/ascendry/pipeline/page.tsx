@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getAscendryUser, getClients, getCallSessions } from "@/lib/ascendry-queries";
+import { getAscendryUser, getClients, getCallSessions, getPitchDecks } from "@/lib/ascendry-queries";
 import KanbanBoard from "@/components/ascendry/KanbanBoard";
 
 export default async function PipelinePage() {
@@ -11,7 +11,7 @@ export default async function PipelinePage() {
   const ascendryUser = await getAscendryUser(user.id);
   if (!ascendryUser) redirect("/ascendry");
 
-  const [clients, sessions] = await Promise.all([getClients(), getCallSessions()]);
+  const [clients, sessions, decks] = await Promise.all([getClients(), getCallSessions(), getPitchDecks()]);
 
   return (
     <div className="pt-14 lg:pt-0 px-4 lg:px-8 py-8">
@@ -19,6 +19,7 @@ export default async function PipelinePage() {
         clients={clients}
         isAdmin={ascendryUser.role === "admin"}
         initialSessions={sessions}
+        initialDecks={decks}
       />
     </div>
   );
