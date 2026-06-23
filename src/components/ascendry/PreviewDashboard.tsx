@@ -273,7 +273,7 @@ export default function PreviewDashboard() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col overflow-hidden"
+      className="h-screen w-screen flex flex-col overflow-hidden"
       style={{ background: "#08090f", fontFamily: "system-ui, -apple-system, sans-serif" }}
     >
       {/* ── Header ── */}
