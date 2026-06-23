@@ -9,7 +9,9 @@ export async function proxy(request: NextRequest) {
   let isValidUrl = false;
   try { new URL(supabaseUrl); isValidUrl = true; } catch { /* noop */ }
   if (!isValidUrl || !supabaseKey) {
-    return NextResponse.next({ request });
+    const res = NextResponse.next({ request });
+    res.headers.set("x-pathname", request.nextUrl.pathname);
+    return res;
   }
 
   let supabaseResponse = NextResponse.next({ request });
@@ -58,6 +60,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  supabaseResponse.headers.set("x-pathname", pathname);
   return supabaseResponse;
 }
 

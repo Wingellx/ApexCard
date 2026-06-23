@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getAscendryUser } from "@/lib/ascendry-queries";
 import AscendrySidebar from "@/components/ascendry/AscendrySidebar";
@@ -6,6 +7,14 @@ import AscendrySidebar from "@/components/ascendry/AscendrySidebar";
 export const metadata = { title: "Ascendry" };
 
 export default async function AscendryLayout({ children }: { children: React.ReactNode }) {
+  const h = await headers();
+  const pathname = h.get("x-pathname") ?? "";
+
+  // Preview page is a standalone fullscreen route — skip sidebar and auth
+  if (pathname === "/ascendry/preview") {
+    return <>{children}</>;
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
