@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { BarChart2, Kanban, TrendingUp, DollarSign, FileText, BookOpen, LayoutTemplate, Menu, X } from "lucide-react";
+import { BarChart2, Kanban, TrendingUp, DollarSign, FileText, BookOpen, LayoutTemplate, Menu, X, MonitorPlay } from "lucide-react";
 import { useState } from "react";
 import type { AscendryRole } from "@/lib/ascendry-queries";
 
@@ -22,6 +22,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/ascendry/metrics",   label: "Metrics",   icon: TrendingUp,     adminOnly: false },
   { href: "/ascendry/revenue",   label: "Revenue",   icon: DollarSign,  adminOnly: true  },
   { href: "/ascendry/analysis",  label: "Analysis",  icon: FileText,    adminOnly: true  },
+  { href: "/ascendry/preview",   label: "Preview",   icon: MonitorPlay, adminOnly: true  },
 ];
 
 interface Props {
